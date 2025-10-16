@@ -13,6 +13,7 @@ import {
   Boxes,
   ChevronLeft,
   ChevronRight,
+  Layers,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { ContainerProps } from "@/HOC/Container";
@@ -52,6 +53,11 @@ export function Sidebar({ children }:ContainerProps) {
       url: "/categories",
       icon: Boxes,
     },
+    {
+      title:"Variant",
+      url:"/variant",
+      icon:Layers
+    }
   ];
 
   const handleLogout = async () => {
