@@ -1,23 +1,24 @@
-"use client";
-import * as React from "react";
-import { useState, useEffect } from "react";
-import { MdOutlineModeEditOutline } from "react-icons/md";
+"use client"
+import { useState, useEffect } from "react"
+import { MdOutlineModeEditOutline, MdDelete } from "react-icons/md"
+import { FaPlus } from "react-icons/fa"
+import Link from "next/link"
+import Image from "next/image"
+
 import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+  type VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from "@tanstack/react-table";
+} from "@tanstack/react-table"
 
-import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,43 +29,60 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-
-import { Input } from "@/components/ui/input";
-
+} from "@/components/ui/alert-dialog"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MdDelete } from "react-icons/md";
-
-import { getAllProduct, deleteProduct } from "@/services/product";
-import Image from "next/image";
-import { FaPlus } from "react-icons/fa";
-import Loader from "../Loader";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TailwindSwitch } from "@/components/ui/switch"
+import { deleteProduct } from "@/services/product"
+import Loader from "../Loader"
 
 export type Payment = {
-  _id?: string;
-  title: string;
-  price: string;
-  category: string;
-  img: string[];
-};
+  _id?: string
+  title: string
+  price: string
+  category: string
+  img: string[]
+  isSpecial: boolean
+  isTopSelling: boolean
+  isExclusive: boolean
+  isSale?: boolean
+}
 
+// --- Delete product handler ---
 const handleDelete = async (id: string | undefined) => {
   try {
-    console.log(id);
-    if (id) await deleteProduct(id);
-    window.location.reload();
+    if (id) await deleteProduct(id)
+    window.location.reload()
   } catch (err) {
-    console.error("Error deleting user:", err);
+    console.error("Error deleting product:", err)
   }
-};
+}
 
+// --- Toggle boolean fields handler ---
+const handleToggleSpecial = async (id: string | undefined, field: string) => {
+  try {
+    if (!id) return
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/product/toggle/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ field }),
+    })
+    if (!response.ok) throw new Error("Failed to update product")
+  } catch (err) {
+    console.error("Error updating product:", err)
+  }
+}
+
+// --- Table Columns ---
 export const columns: ColumnDef<Payment>[] = [
   {
     accessorKey: "img",
@@ -72,7 +90,7 @@ export const columns: ColumnDef<Payment>[] = [
     cell: ({ row }) => (
       <div className="capitalize flex justify-center align-center w-20 h-20">
         <Image
-          src={(row.getValue("img") as string[])[0]}
+          src={(row.getValue("img") as string[])[0] || "/placeholder.svg"}
           alt="image"
           width={80}
           height={80}
@@ -83,27 +101,55 @@ export const columns: ColumnDef<Payment>[] = [
   },
   {
     accessorKey: "title",
-    header: ({}) => <div className="capitalize text-center">Title</div>,
-    cell: ({ row }) => (
-      <div className="text-center">{row.getValue("title")}</div>
-    ),
+    header: () => <div className="capitalize text-center">Title</div>,
+    cell: ({ row }) => <div className="text-center">{row.getValue("title")}</div>,
   },
   {
     accessorKey: "price",
     header: "Price",
-    cell: ({ row }) => (
-      <div className="capitalize text-center">{row.getValue("price")}</div>
-    ),
+    cell: ({ row }) => <div className="capitalize text-center">{row.getValue("price")}</div>,
   },
-
   {
     accessorKey: "category",
     header: "Category",
+    cell: ({ row }) => <div className="capitalize text-center">{row.getValue("category")}</div>,
+  },
+  {
+    accessorKey: "isSpecial",
+    header: "Special",
     cell: ({ row }) => (
-      <div className="capitalize text-center">{row.getValue("category")}</div>
+      <div className="flex justify-center">
+        <TailwindSwitch
+          checked={row.getValue("isSpecial") as boolean}
+          onCheckedChange={() => handleToggleSpecial(row.original._id, "isSpecial")}
+        />
+      </div>
     ),
   },
-
+  {
+    accessorKey: "isTopSelling",
+    header: "Top Selling",
+    cell: ({ row }) => (
+      <div className="flex justify-center">
+        <TailwindSwitch
+          checked={row.getValue("isTopSelling") as boolean}
+          onCheckedChange={() => handleToggleSpecial(row.original._id, "isTopSelling")}
+        />
+      </div>
+    ),
+  },
+  {
+    accessorKey: "isExclusive",
+    header: "Exclusive",
+    cell: ({ row }) => (
+      <div className="flex justify-center">
+        <TailwindSwitch
+          checked={row.getValue("isExclusive") as boolean}
+          onCheckedChange={() => handleToggleSpecial(row.original._id, "isExclusive")}
+        />
+      </div>
+    ),
+  },
   {
     header: "Action ",
     cell: ({ row }) => (
@@ -120,16 +166,12 @@ export const columns: ColumnDef<Payment>[] = [
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the
-                  account and remove the data from your servers.
+                  This action cannot be undone. This will permanently delete the product and remove its data.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-red-600"
-                  onClick={() => handleDelete(row.original._id)}
-                >
+                <AlertDialogAction className="bg-red-600" onClick={() => handleDelete(row.original._id)}>
                   Continue
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -147,19 +189,20 @@ export const columns: ColumnDef<Payment>[] = [
       </div>
     ),
   },
-];
+]
 
-export default function Products() {
-  const [users, setUsers] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [page, setPage] = useState(1);
-  const [nextDisable, setNextDisable] = useState(false);
-  const [previousDisable, setPreviousDisable] = useState(true);
-  const [rowSelection, setRowSelection] = useState({});
+// --- Main Component ---
+export default function ProductsList() {
+  const [users, setUsers] = useState<Payment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [rowSelection, setRowSelection] = useState({})
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(null)
 
   const table = useReactTable({
     data: users,
@@ -172,76 +215,109 @@ export default function Products() {
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-  });
+    state: { sorting, columnFilters, columnVisibility, rowSelection },
+  })
 
-  const fetchData = async (page: number, limit: number) => {
+  // --- Fetch Data ---
+  const fetchData = async (pageNum: number, limit: number, filter?: string) => {
     try {
-      const data = await getAllProduct(page, limit);
+      const filterBy: string[] = []
+      const filterValue: string[] = []
 
-      setPage(data.pagination.currentPage);
-      if (data.pagination.currentPage === data.pagination.totalPages) {
-        setNextDisable(true);
-      } else {
-        setNextDisable(false);
+      if (filter) {
+        filterBy.push(filter)
+        filterValue.push("true")
       }
-      if (data.pagination.currentPage === 1) {
-        setPreviousDisable(true);
-      } else {
-        setPreviousDisable(false);
-      }
-      console.log(data);
-      setUsers(data?.products);
-      setLoading(false);
+
+      const query = new URLSearchParams({
+        page: String(pageNum),
+        limit: String(limit),
+        ...(filterBy.length && { filterBy: filterBy.join(",") }),
+        ...(filterValue.length && { filterValue: filterValue.join(",") }),
+      })
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/get/products?${query}`)
+      const data = await res.json()
+
+      setPage(data.pagination.currentPage)
+      setTotalPages(data.pagination.totalPages)
+      setUsers(data?.products)
+      setLoading(false)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to fetch users");
-      setLoading(false);
+      setError(err instanceof Error ? err.message : "Failed to fetch users")
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchData(1, 8);
-  }, []);
+    fetchData(1, 8)
+  }, [])
 
-  if (loading) return <Loader/>
-  if (error) return <div>Error: {error}</div>;
+  const handleFilterSelect = (filter: string) => {
+    setSelectedFilter(filter)
+    setPage(1)
+    fetchData(1, 8, filter)
+  }
+
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1)
+
+  if (loading) return <Loader />
+  if (error) return <div>Error: {error}</div>
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4 justify-between">
-        <Input
-          placeholder="Filter title  ..."
-          value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("title")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+      {/* 🔍 Search + Filter Bar */}
+      <div className="flex items-center py-4 justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Input
+            placeholder="Search Product"
+            value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+            onChange={(event) => table.getColumn("title")?.setFilterValue(event.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+        <div className="gap-5">
+             <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">{selectedFilter ? `Filter: ${selectedFilter}` : "Filter"}</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => handleFilterSelect("exclusive")}>Exclusive</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleFilterSelect("topSelling")}>Top Selling</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleFilterSelect("special")}>Special</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleFilterSelect("sale")}>Discount</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedFilter(null)
+                  fetchData(1, 8)
+                }}
+              >
+                Clear Filter
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
         <Link href="/products/product/new" passHref>
-          <Button className="bg-primaryColor hover:bg-primaryColor/90        text-sm">
+          <Button className="bg-primaryColor hover:bg-primaryColor/90 text-sm ml-5">
             <FaPlus className="text-base text-white " />
             <h1 className="text-white text-base">Add Product</h1>
           </Button>
         </Link>
+        </div>
+
+       
       </div>
-      <div className="rounded-md border w-[65rem]  ">
+
+      {/* 🧾 Product Table */}
+      <div className="rounded-md border w-[77rem]">
         <Table>
           <TableHeader className="text-xl">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead className="text-center" key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -250,26 +326,15 @@ export default function Products() {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   No results.
                 </TableCell>
               </TableRow>
@@ -277,24 +342,35 @@ export default function Products() {
           </TableBody>
         </Table>
       </div>
+
       <div className="flex items-center justify-end space-x-2 py-4">
         <Button
           variant="outline"
           size="sm"
-          onClick={() => fetchData(page - 1, 8)}
-          disabled={previousDisable}
+          onClick={() => fetchData(page - 1, 8, selectedFilter || undefined)}
+          disabled={page === 1}
         >
           Previous
         </Button>
+        {pageNumbers.map((pageNum) => (
+          <Button
+            key={pageNum}
+            variant={pageNum === page ? "default" : "outline"}
+            size="sm"
+            onClick={() => fetchData(pageNum, 8, selectedFilter || undefined)}
+          >
+            {pageNum}
+          </Button>
+        ))}
         <Button
           variant="outline"
           size="sm"
-          onClick={() => fetchData(page + 1, 8)}
-          disabled={nextDisable}
+          onClick={() => fetchData(page + 1, 8, selectedFilter || undefined)}
+          disabled={page === totalPages}
         >
           Next
         </Button>
       </div>
     </div>
-  );
+  )
 }

@@ -12,10 +12,12 @@ import Image from "next/image"
 import { SiTicktick } from "react-icons/si"
 import { CiCirclePlus } from "react-icons/ci"
 import { IoCloseCircle } from "react-icons/io5"
+import { MdKeyboardArrowDown } from "react-icons/md"
 import { toast } from "sonner"
 import { getAllCategories } from "@/services/categories"
 import { useParams, useRouter } from "next/navigation"
 import { josefin } from "@/utils/font"
+import { IoArrowBackOutline } from "react-icons/io5";
 
 interface SubCategory {
   name: string
@@ -36,18 +38,17 @@ interface Variant {
   imgUrl: string
 }
 
+interface Size {
+  name: string
+  price: number
+}
+
 const schema = z.object({
   title: z.string().min(1, "*"),
   description: z.string().min(1, "*"),
   faces: z.string().min(1, "*"),
   weight: z.string().min(1, "*"),
   country: z.string().min(1, "*"),
-  sizeRegularName: z.string().optional(),
-  sizeRegularPrice: z.string().optional(),
-  sizeMediumName: z.string().optional(),
-  sizeMediumPrice: z.string().optional(),
-  sizeCollectorName: z.string().optional(),
-  sizeCollectorPrice: z.string().optional(),
   price: z.string({ message: "*" }).min(1, "*"),
   stock: z.string({ message: "*" }).min(1, "*"),
   isSale: z.string().min(1, "*"),
@@ -55,7 +56,7 @@ const schema = z.object({
   isExclusive: z.string().min(1, "*"),
   isTopSelling: z.string().min(1, "*"),
   category: z.string().min(1, "*"),
-  subCategory: z.string().min(1, "*"),
+  subCategory: z.string().optional(),
   img: z.array(z.any()).min(1, "At least one image is required"),
   keywords: z.array(z.string()).optional(),
   discount: z.array(z.object({ title: z.string(), percentage: z.number() })).optional(),
@@ -86,6 +87,7 @@ const Demo: React.FC = () => {
   const [selectImage, setSelectImage] = useState<string>("")
   const [subCategory, setSubCategory] = useState<Category[]>([])
   const [subCategoryOptions, setSubCategoryOptions] = useState<SubCategory[]>([])
+  const [diableDiscountAdd, setDiableDiscountAdd] = useState<boolean>(false)
 
   const [keywords, setKeywords] = useState<string[]>([])
   const [keywordInput, setKeywordInput] = useState<string>("")
@@ -95,6 +97,9 @@ const Demo: React.FC = () => {
   const [variants, setVariants] = useState<Variant[]>([])
   const [selectedVariants, setSelectedVariants] = useState<Set<string>>(new Set())
   const [defaultVariant, setDefaultVariant] = useState<string>("")
+  const [sizes, setSizes] = useState<Size[]>([])
+  const [newSizeName, setNewSizeName] = useState<string>("")
+  const [newSizePrice, setNewSizePrice] = useState<string>("")
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isDragging, setIsDragging] = useState<boolean>(false)
 
@@ -185,13 +190,29 @@ const Demo: React.FC = () => {
       setValue("discount", newDiscounts)
       setDiscountTitle("")
       setDiscountPercentage("")
+      setDiableDiscountAdd(true)
     }
   }
 
   const handleRemoveDiscount = (index: number) => {
     const newDiscounts = discounts.filter((_, i) => i !== index)
+    setDiableDiscountAdd(false)
     setDiscounts(newDiscounts)
     setValue("discount", newDiscounts)
+  }
+
+  const handleAddSize = () => {
+    if (newSizeName.trim() && newSizePrice) {
+      const newSizes = [...sizes, { name: newSizeName.trim(), price: Number(newSizePrice) }]
+      setSizes(newSizes)
+      setNewSizeName("")
+      setNewSizePrice("")
+    }
+  }
+
+  const handleRemoveSize = (index: number) => {
+    const newSizes = sizes.filter((_, i) => i !== index)
+    setSizes(newSizes)
   }
 
   const fetchVariants = async (): Promise<void> => {
@@ -268,18 +289,8 @@ const Demo: React.FC = () => {
         }
       })
 
-      const sizeArray = []
-      if (data.sizeRegularName && data.sizeRegularPrice) {
-        sizeArray.push({ name: data.sizeRegularName, price: Number(data.sizeRegularPrice) })
-      }
-      if (data.sizeMediumName && data.sizeMediumPrice) {
-        sizeArray.push({ name: data.sizeMediumName, price: Number(data.sizeMediumPrice) })
-      }
-      if (data.sizeCollectorName && data.sizeCollectorPrice) {
-        sizeArray.push({ name: data.sizeCollectorName, price: Number(data.sizeCollectorPrice) })
-      }
-      if (sizeArray.length > 0) {
-        formData.append("size", JSON.stringify(sizeArray))
+      if (sizes.length > 0) {
+        formData.append("size", JSON.stringify(sizes))
       }
 
       if (keywords.length > 0) {
@@ -347,22 +358,7 @@ const Demo: React.FC = () => {
       setValue("subCategory", data.product.subCategory)
 
       if (data.product.size && Array.isArray(data.product.size)) {
-        const regularSize = data.product.size.find((s: any) => s.name.toLowerCase().includes("regular"))
-        const mediumSize = data.product.size.find((s: any) => s.name.toLowerCase().includes("medium"))
-        const collectorSize = data.product.size.find((s: any) => s.name.toLowerCase().includes("collector"))
-
-        if (regularSize) {
-          setValue("sizeRegularName", regularSize.name)
-          setValue("sizeRegularPrice", String(regularSize.price))
-        }
-        if (mediumSize) {
-          setValue("sizeMediumName", mediumSize.name)
-          setValue("sizeMediumPrice", String(mediumSize.price))
-        }
-        if (collectorSize) {
-          setValue("sizeCollectorName", collectorSize.name)
-          setValue("sizeCollectorPrice", String(collectorSize.price))
-        }
+        setSizes(data.product.size)
       }
 
       if (data.product.keywords) {
@@ -370,6 +366,9 @@ const Demo: React.FC = () => {
         setValue("keywords", data.product.keywords)
       }
       if (data.product.discount) {
+        if(data.product.discount.length === 1){
+          setDiableDiscountAdd(true)
+        }
         setDiscounts(data.product.discount)
         setValue("discount", data.product.discount)
       }
@@ -427,6 +426,9 @@ const Demo: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-8">
+      <button className="absolute top-2 text-4xl rounded-full" onClick={()=> router.push("/products")}><IoArrowBackOutline /></button>
+        
+      
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className={`text-4xl font-bold text-gray-800 ${josefin.className}`}>
@@ -437,7 +439,7 @@ const Demo: React.FC = () => {
           </p>
         </div>
         <Button
-          className="bg-primaryColor text-white rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 px-8 py-6 text-base font-medium"
+          className="bg-primaryColor absolute top-4 right-16 z-50 text-white rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 px-8 py-6 text-base font-medium"
           type="submit"
           onClick={handleSubmit(onSubmit)}
           disabled={isLoading}
@@ -546,7 +548,7 @@ const Demo: React.FC = () => {
                   </div>
 
                   <div>
-                    <div className="text-sm font-semibold text-gray-700 mb-2">
+                    <div className="text-sm font-semibold text-gray-700 mb-3">
                       Country <span className="text-red-500">*</span>
                     </div>
                     <Controller
@@ -557,18 +559,19 @@ const Demo: React.FC = () => {
                         <Dropdown>
                           <DropdownTrigger>
                             <Button
-                              className={`capitalize w-full h-12 bg-primaryColor hover:bg-primaryColor/90 transition-all duration-200 ${
-                                errors.country ? "ring-2 ring-red-500" : ""
-                              } text-white text-base font-medium shadow-md`}
+                              className={`capitalize w-full h-12 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
+                                errors.country ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                              } text-gray-700 text-base font-medium shadow-sm flex items-center justify-between`}
                               variant="bordered"
                             >
-                              {field.value || "Select Country"}
+                              <span>{field.value || "Select Country"}</span>
+                              <MdKeyboardArrowDown className="text-gray-500" size={20} />
                             </Button>
                           </DropdownTrigger>
                           <DropdownMenu
                             disallowEmptySelection
                             aria-label="Country selection"
-                            selectedKeys={new Set([field.value])}
+                            selectedKeys={field.value ? new Set([field.value]) : undefined}
                             selectionMode="single"
                             variant="flat"
                             onSelectionChange={(keys) => {
@@ -587,114 +590,6 @@ const Demo: React.FC = () => {
                         <span className="text-xs">⚠</span> {errors.country.message}
                       </p>
                     )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
-              <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                  <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
-                  Size Options
-                </h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-5">
-                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Regular Size</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="sizeRegularName" className="block text-xs font-medium text-gray-600 mb-1.5">
-                          Size Name
-                        </label>
-                        <input
-                          id="sizeRegularName"
-                          placeholder="e.g., Regular"
-                          className="bg-white h-11 px-4 w-full rounded-lg border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-                          {...register("sizeRegularName")}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="sizeRegularPrice" className="block text-xs font-medium text-gray-600 mb-1.5">
-                          Price
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                          <input
-                            id="sizeRegularPrice"
-                            type="number"
-                            placeholder="0.00"
-                            className="bg-white h-11 px-4 pl-8 w-full rounded-lg border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-                            {...register("sizeRegularPrice")}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Medium Size</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="sizeMediumName" className="block text-xs font-medium text-gray-600 mb-1.5">
-                          Size Name
-                        </label>
-                        <input
-                          id="sizeMediumName"
-                          placeholder="e.g., Medium"
-                          className="bg-white h-11 px-4 w-full rounded-lg border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-                          {...register("sizeMediumName")}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="sizeMediumPrice" className="block text-xs font-medium text-gray-600 mb-1.5">
-                          Price
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                          <input
-                            id="sizeMediumPrice"
-                            type="number"
-                            placeholder="0.00"
-                            className="bg-white h-11 px-4 pl-8 w-full rounded-lg border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-                            {...register("sizeMediumPrice")}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Collector Size</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="sizeCollectorName" className="block text-xs font-medium text-gray-600 mb-1.5">
-                          Size Name
-                        </label>
-                        <input
-                          id="sizeCollectorName"
-                          placeholder="e.g., Collector"
-                          className="bg-white h-11 px-4 w-full rounded-lg border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-                          {...register("sizeCollectorName")}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="sizeCollectorPrice" className="block text-xs font-medium text-gray-600 mb-1.5">
-                          Price
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-                          <input
-                            id="sizeCollectorPrice"
-                            type="number"
-                            placeholder="0.00"
-                            className="bg-white h-11 px-4 pl-8 w-full rounded-lg border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-                            {...register("sizeCollectorPrice")}
-                          />
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -768,18 +663,19 @@ const Demo: React.FC = () => {
                             <Dropdown>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-11 bg-primaryColor hover:bg-primaryColor/90 transition-all duration-200 ${
-                                    errors.isSale ? "ring-2 ring-red-500" : ""
-                                  } text-white text-sm font-medium shadow-sm`}
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
+                                    errors.isSale ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
                                   variant="bordered"
                                 >
-                                  {field.value || "Select"}
+                                  <span>{field.value || "Select"}</span>
+                                  <MdKeyboardArrowDown className="text-gray-500" size={18} />
                                 </Button>
                               </DropdownTrigger>
                               <DropdownMenu
                                 disallowEmptySelection
                                 aria-label="Sale selection"
-                                selectedKeys={new Set([field.value])}
+                                selectedKeys={field.value ? new Set([field.value]) : undefined}
                                 selectionMode="single"
                                 variant="flat"
                                 onSelectionChange={(keys) => {
@@ -804,18 +700,19 @@ const Demo: React.FC = () => {
                             <Dropdown>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-11 bg-primaryColor hover:bg-primaryColor/90 transition-all duration-200 ${
-                                    errors.isExclusive ? "ring-2 ring-red-500" : ""
-                                  } text-white text-sm font-medium shadow-sm`}
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
+                                    errors.isExclusive ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
                                   variant="bordered"
                                 >
-                                  {field.value || "Select"}
+                                  <span>{field.value || "Select"}</span>
+                                  <MdKeyboardArrowDown className="text-gray-500" size={18} />
                                 </Button>
                               </DropdownTrigger>
                               <DropdownMenu
                                 disallowEmptySelection
                                 aria-label="Exclusive selection"
-                                selectedKeys={new Set([field.value])}
+                                selectedKeys={field.value ? new Set([field.value]) : undefined}
                                 selectionMode="single"
                                 variant="flat"
                                 onSelectionChange={(keys) => {
@@ -840,18 +737,19 @@ const Demo: React.FC = () => {
                             <Dropdown>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-11 bg-primaryColor hover:bg-primaryColor/90 transition-all duration-200 ${
-                                    errors.isSpecial ? "ring-2 ring-red-500" : ""
-                                  } text-white text-sm font-medium shadow-sm`}
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
+                                    errors.isSpecial ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
                                   variant="bordered"
                                 >
-                                  {field.value || "Select"}
+                                  <span>{field.value || "Select"}</span>
+                                  <MdKeyboardArrowDown className="text-gray-500" size={18} />
                                 </Button>
                               </DropdownTrigger>
                               <DropdownMenu
                                 disallowEmptySelection
                                 aria-label="Special selection"
-                                selectedKeys={new Set([field.value])}
+                                selectedKeys={field.value ? new Set([field.value]) : undefined}
                                 selectionMode="single"
                                 variant="flat"
                                 onSelectionChange={(keys) => {
@@ -876,18 +774,19 @@ const Demo: React.FC = () => {
                             <Dropdown>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-11 bg-primaryColor hover:bg-primaryColor/90 transition-all duration-200 ${
-                                    errors.isTopSelling ? "ring-2 ring-red-500" : ""
-                                  } text-white text-sm font-medium shadow-sm`}
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
+                                    errors.isTopSelling ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
                                   variant="bordered"
                                 >
-                                  {field.value || "Select"}
+                                  <span>{field.value || "Select"}</span>
+                                  <MdKeyboardArrowDown className="text-gray-500" size={18} />
                                 </Button>
                               </DropdownTrigger>
                               <DropdownMenu
                                 disallowEmptySelection
                                 aria-label="Top Selling selection"
-                                selectedKeys={new Set([field.value])}
+                                selectedKeys={field.value ? new Set([field.value]) : undefined}
                                 selectionMode="single"
                                 variant="flat"
                                 onSelectionChange={(keys) => {
@@ -907,6 +806,77 @@ const Demo: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+              <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
+                  Size Options
+                </h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Size name (e.g., Regular, Medium)"
+                      value={newSizeName}
+                      onChange={(e) => setNewSizeName(e.target.value)}
+                      className="bg-gray-50 h-12 px-4 flex-1 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+                    />
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                      <input
+                        type="number"
+                        placeholder="Price"
+                        value={newSizePrice}
+                        onChange={(e) => setNewSizePrice(e.target.value)}
+                        className="bg-gray-50 h-12 px-4 pl-8 w-full rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleAddSize}
+                      className="bg-primaryColor text-white h-12 px-4 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium flex items-center gap-2"
+                    >
+                      <CiCirclePlus size={20} />
+                      Add
+                    </Button>
+                  </div>
+
+                  {sizes.length > 0 ? (
+                    <div className="space-y-2">
+                      {sizes.map((size, index) => (
+                        <div
+                          key={index}
+                          className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl flex justify-between items-center border border-gray-200 transition-all duration-200 hover:shadow-md"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="bg-primaryColor/10 text-primaryColor px-3 py-1 rounded-lg font-semibold text-sm">
+                              {size.name}
+                            </div>
+                            <span className="font-medium text-gray-700">${size.price}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSize(index)}
+                            className="hover:scale-110 transition-transform"
+                          >
+                            <IoCloseCircle className="text-red-500" size={24} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                      <p className="text-sm">No sizes added yet. Click the + button to add sizes.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            
 
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
               <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
@@ -975,6 +945,7 @@ const Demo: React.FC = () => {
                       type="text"
                       placeholder="Discount title"
                       value={discountTitle}
+                      disabled={diableDiscountAdd}
                       onChange={(e) => setDiscountTitle(e.target.value)}
                       className="bg-gray-50 h-12 px-4 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
                     />
@@ -982,11 +953,13 @@ const Demo: React.FC = () => {
                       type="number"
                       placeholder="Percentage"
                       value={discountPercentage}
+                      disabled={diableDiscountAdd}
                       onChange={(e) => setDiscountPercentage(e.target.value)}
                       className="bg-gray-50 h-12 px-4 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
                     />
                     <Button
                       type="button"
+                      disabled={diableDiscountAdd}
                       onClick={handleAddDiscount}
                       className="bg-primaryColor text-white h-12 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
                     >
@@ -1141,7 +1114,7 @@ const Demo: React.FC = () => {
               <div className="p-6">
                 <div className="space-y-4">
                   <div>
-                    <div className="text-sm font-semibold text-gray-700 mb-2">
+                    <div className="text-sm font-semibold text-gray-700 mb-3">
                       Product Category <span className="text-red-500">*</span>
                     </div>
                     <Controller
@@ -1149,39 +1122,28 @@ const Demo: React.FC = () => {
                       control={control}
                       defaultValue=""
                       render={({ field }) => (
-                        <Dropdown>
-                          <DropdownTrigger>
-                            <Button
-                              className={`capitalize w-full h-12 bg-primaryColor hover:bg-primaryColor/90 transition-all duration-200 ${
-                                errors.category ? "ring-2 ring-red-500" : ""
-                              } text-white text-base font-medium shadow-md`}
-                              variant="bordered"
-                            >
-                              {field.value || "Select Category"}
-                            </Button>
-                          </DropdownTrigger>
-                          <DropdownMenu
-                            disallowEmptySelection
-                            aria-label="Category selection"
-                            selectedKeys={new Set([field.value])}
-                            selectionMode="single"
-                            variant="flat"
-                            onSelectionChange={(keys) => {
-                              const selectedValue = Array.from(keys)[0]
-                              field.onChange(selectedValue)
-                            }}
-                          >
-                            {subCategory.length > 0 ? (
-                              subCategory.map((cat) => (
-                                <DropdownItem key={cat.name} value={cat.name}>
-                                  {cat.name}
-                                </DropdownItem>
-                              ))
-                            ) : (
-                              <DropdownItem key="noCategories">No categories available</DropdownItem>
-                            )}
-                          </DropdownMenu>
-                        </Dropdown>
+                        <div className="space-y-2">
+                          {subCategory.length > 0 ? (
+                            subCategory.map((cat) => (
+                              <label
+                                key={cat._id}
+                                className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer hover:bg-gray-50 transition-all duration-200"
+                              >
+                                <input
+                                  type="radio"
+                                  name="category"
+                                  value={cat.name}
+                                  checked={field.value === cat.name}
+                                  onChange={(e) => field.onChange(e.target.value)}
+                                  className="w-4 h-4 text-primaryColor cursor-pointer"
+                                />
+                                <span className="font-medium text-gray-700">{cat.name}</span>
+                              </label>
+                            ))
+                          ) : (
+                            <p className="text-gray-500 text-sm">No categories available</p>
+                          )}
+                        </div>
                       )}
                     />
                     {errors.category && (
@@ -1193,46 +1155,51 @@ const Demo: React.FC = () => {
 
                   <div>
                     <div className="text-sm font-semibold text-gray-700 mb-2">
-                      Sub Category <span className="text-red-500">*</span>
+                      Sub Category {subCategoryOptions.length > 0 && <span className="text-red-500">*</span>}
                     </div>
                     <Controller
                       name="subCategory"
                       control={control}
                       defaultValue=""
                       render={({ field }) => (
-                        <Dropdown isDisabled={!selectedCategory}>
-                          <DropdownTrigger>
-                            <Button
-                              className={`capitalize w-full h-12 bg-primaryColor hover:bg-primaryColor/90 transition-all duration-200 ${
-                                errors.subCategory ? "ring-2 ring-red-500" : ""
-                              } text-white text-base font-medium shadow-md ${!selectedCategory ? "opacity-50 cursor-not-allowed" : ""}`}
-                              variant="bordered"
-                            >
-                              {field.value || "Select Sub-Category"}
-                            </Button>
-                          </DropdownTrigger>
-                          <DropdownMenu
-                            disallowEmptySelection
-                            aria-label="Sub-Category selection"
-                            selectedKeys={new Set([field.value])}
-                            selectionMode="single"
-                            variant="flat"
-                            onSelectionChange={(keys) => {
-                              const selectedValue = Array.from(keys)[0]
-                              field.onChange(selectedValue)
-                            }}
-                          >
-                            {subCategoryOptions.length > 0 ? (
-                              subCategoryOptions.map((sub) => (
-                                <DropdownItem key={sub.name} value={sub.name}>
-                                  {sub.name}
-                                </DropdownItem>
-                              ))
-                            ) : (
-                              <DropdownItem key="noSub">No Subcategories</DropdownItem>
-                            )}
-                          </DropdownMenu>
-                        </Dropdown>
+                        <>
+                          {subCategoryOptions.length > 0 ? (
+                            <Dropdown isDisabled={!selectedCategory}>
+                              <DropdownTrigger>
+                                <Button
+                                  className={`capitalize w-full h-12 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
+                                    errors.subCategory ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                  } text-gray-700 text-base font-medium shadow-sm flex items-center justify-between ${!selectedCategory ? "opacity-50 cursor-not-allowed" : ""}`}
+                                  variant="bordered"
+                                >
+                                  <span>{field.value || "Select Sub-Category"}</span>
+                                  <MdKeyboardArrowDown className="text-gray-500" size={20} />
+                                </Button>
+                              </DropdownTrigger>
+                              <DropdownMenu
+                                disallowEmptySelection
+                                aria-label="Sub-Category selection"
+                                selectedKeys={field.value ? new Set([field.value]) : undefined}
+                                selectionMode="single"
+                                variant="flat"
+                                onSelectionChange={(keys) => {
+                                  const selectedValue = Array.from(keys)[0]
+                                  field.onChange(selectedValue)
+                                }}
+                              >
+                                {subCategoryOptions.map((sub) => (
+                                  <DropdownItem key={sub.name} value={sub.name}>
+                                    {sub.name}
+                                  </DropdownItem>
+                                ))}
+                              </DropdownMenu>
+                            </Dropdown>
+                          ) : (
+                            <div className="w-full h-12 bg-gray-50 border-2 border-gray-200 rounded-lg flex items-center px-4 text-gray-500">
+                              No subcategories available for this category
+                            </div>
+                          )}
+                        </>
                       )}
                     />
                     {errors.subCategory && (
@@ -1258,58 +1225,62 @@ const Demo: React.FC = () => {
               <div className="p-6">
                 <div className="space-y-4">
                   <div>
-                    <div className="text-sm font-semibold text-gray-700 mb-2">Select Variants</div>
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button
-                          className="capitalize w-full h-12 bg-primaryColor hover:bg-primaryColor/90 transition-all duration-200 text-white text-base font-medium shadow-md"
-                          variant="bordered"
-                        >
-                          {selectedVariants.size > 0
-                            ? `${selectedVariants.size} variant${selectedVariants.size > 1 ? "s" : ""} selected`
-                            : "Select Variants"}
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu
-                        aria-label="Variants selection"
-                        selectedKeys={selectedVariants}
-                        selectionMode="multiple"
-                        variant="flat"
-                        onSelectionChange={(keys) => {
-                          const newSelection = new Set(Array.from(keys) as string[])
-                          setSelectedVariants(newSelection)
-                          setValue("variants", Array.from(newSelection))
-                        }}
-                      >
-                        {variants.length > 0 ? (
-                          variants.map((variant) => (
-                            <DropdownItem key={variant._id}>
-                              {variant.name} - ${variant.price}
-                            </DropdownItem>
-                          ))
-                        ) : (
-                          <DropdownItem key="noVariants">No variants available</DropdownItem>
-                        )}
-                      </DropdownMenu>
-                    </Dropdown>
+                    <div className="text-sm font-semibold text-gray-700 mb-3">Select Variants</div>
+                    <div className="space-y-2">
+                      {variants.length > 0 ? (
+                        variants.map((variant) => (
+                          <label
+                            key={variant._id}
+                            className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer hover:bg-gray-50 transition-all duration-200"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedVariants.has(variant._id)}
+                              onChange={(e) => {
+                                const newSelection = new Set(selectedVariants)
+                                if (e.target.checked) {
+                                  newSelection.add(variant._id)
+                                } else {
+                                  newSelection.delete(variant._id)
+                                }
+                                setSelectedVariants(newSelection)
+                                setValue("variants", Array.from(newSelection))
+                              }}
+                              className="w-4 h-4 text-primaryColor cursor-pointer"
+                            />
+                            <div className="flex-1">
+                              <span className="font-medium text-gray-700">{variant.name}</span>
+                              <span className="text-gray-500 text-sm ml-2">${variant.price}</span>
+                            </div>
+                          </label>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 text-sm">No variants available</p>
+                      )}
+                    </div>
                   </div>
 
                   <div>
                     <div className="text-sm font-semibold text-gray-700 mb-2">Default Variant</div>
-                    <Dropdown>
+                    <Dropdown isDisabled={selectedVariants.size === 0}>
                       <DropdownTrigger>
                         <Button
-                          className="capitalize w-full h-12 bg-primaryColor hover:bg-primaryColor/90 transition-all duration-200 text-white text-base font-medium shadow-md"
+                          className={`capitalize w-full h-12 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
+                            selectedVariants.size === 0 ? "opacity-50 cursor-not-allowed" : "border-2 border-gray-200"
+                          } text-gray-700 text-base font-medium shadow-sm flex items-center justify-between`}
                           variant="bordered"
                         >
-                          {defaultVariant
-                            ? variants.find((v) => v._id === defaultVariant)?.name || "Select Default Variant"
-                            : "Select Default Variant"}
+                          <span>
+                            {defaultVariant
+                              ? variants.find((v) => v._id === defaultVariant)?.name || "Select Default Variant"
+                              : "Select Default Variant"}
+                          </span>
+                          <MdKeyboardArrowDown className="text-gray-500" size={20} />
                         </Button>
                       </DropdownTrigger>
                       <DropdownMenu
                         aria-label="Default variant selection"
-                        selectedKeys={new Set([defaultVariant])}
+                        selectedKeys={defaultVariant ? new Set([defaultVariant]) : undefined}
                         selectionMode="single"
                         variant="flat"
                         onSelectionChange={(keys) => {
@@ -1319,16 +1290,21 @@ const Demo: React.FC = () => {
                         }}
                       >
                         {variants.length > 0 ? (
-                          variants.map((variant) => (
-                            <DropdownItem key={variant._id}>
-                              {variant.name} - ${variant.price}
-                            </DropdownItem>
-                          ))
+                          variants
+                            .filter((v) => selectedVariants.has(v._id))
+                            .map((variant) => (
+                              <DropdownItem key={variant._id}>
+                                {variant.name} - ${variant.price}
+                              </DropdownItem>
+                            ))
                         ) : (
                           <DropdownItem key="noVariants">No variants available</DropdownItem>
                         )}
                       </DropdownMenu>
                     </Dropdown>
+                    {selectedVariants.size === 0 && (
+                      <p className="text-gray-500 text-xs mt-1.5">Select at least one variant first</p>
+                    )}
                   </div>
 
                   {selectedVariants.size > 0 ? (
