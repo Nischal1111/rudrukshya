@@ -57,6 +57,11 @@ export function Sidebar({ children }:ContainerProps) {
       title:"Variant",
       url:"/variant",
       icon:Layers
+    },
+    {
+      title: "Orders",
+      url: "/orders",
+      icon: Inbox,
     }
   ];
 
