@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
+  Image,
+  Gift,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { ContainerProps } from "@/HOC/Container";
@@ -62,6 +64,16 @@ export function Sidebar({ children }:ContainerProps) {
       title: "Orders",
       url: "/orders",
       icon: Inbox,
+    },
+    {
+      title:"Gallery",
+      url:"/gallery",
+      icon: Image
+    },
+    {
+      title:"Promocode",
+      url:"/promocode",
+      icon:Gift
     }
   ];
 
