@@ -16,9 +16,11 @@ import {
   Layers,
   Image,
   Gift,
+  Calendar,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { ContainerProps } from "@/HOC/Container";
+import { title } from "process";
 
 export function Sidebar({ children }:ContainerProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -74,6 +76,11 @@ export function Sidebar({ children }:ContainerProps) {
       title:"Promocode",
       url:"/promocode",
       icon:Gift
+    },
+    {
+      title:"Events",
+      url:"/event",
+      icon:Calendar 
     }
   ];
 

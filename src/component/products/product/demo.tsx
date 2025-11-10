@@ -17,7 +17,7 @@ import { toast } from "sonner"
 import { getAllCategories } from "@/services/categories"
 import { useParams, useRouter } from "next/navigation"
 import { josefin } from "@/utils/font"
-import { IoArrowBackOutline } from "react-icons/io5";
+import { IoArrowBackOutline } from "react-icons/io5"
 
 interface SubCategory {
   name: string
@@ -43,26 +43,57 @@ interface Size {
   price: number
 }
 
+
 const schema = z.object({
-  title: z.string().min(1, "*"),
-  description: z.string().min(1, "*"),
-  faces: z.string().min(1, "*"),
-  weight: z.string().min(1, "*"),
-  country: z.string().min(1, "*"),
-  price: z.string({ message: "*" }).min(1, "*"),
-  stock: z.string({ message: "*" }).min(1, "*"),
-  isSale: z.string().min(1, "*"),
-  isSpecial: z.string().min(1, "*"),
-  isExclusive: z.string().min(1, "*"),
-  isTopSelling: z.string().min(1, "*"),
-  category: z.string().min(1, "*"),
-  subCategory: z.string().optional(),
-  img: z.array(z.any()).min(1, "At least one image is required"),
-  keywords: z.array(z.string()).optional(),
-  discount: z.array(z.object({ title: z.string(), percentage: z.number() })).optional(),
-  variants: z.array(z.string()).optional(),
+  title: z.string().nonempty("Product title is required."),
+  description: z.string().nonempty("Product description is required."),
+  faces: z.string().nonempty("Please specify the number of faces."),
+  weight: z.string().nonempty("Product weight is required."),
+  country: z.string().nonempty("Country of origin is required."),
+  price: z.string().optional().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
+      message: "Stock must be a valid number (0 or more).",
+    }),
+  stock: z
+    .string()
+    .nonempty("Stock quantity is required.")
+    .refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
+      message: "Stock must be a valid number (0 or more).",
+    }),
+  isSale: z.string(),
+  isSpecial: z.string(),
+  isExclusive: z
+    .string()
+    .nullable(),
+  isTopSelling: z
+    .string(),
+  category: z.string().nonempty("Product category is required."),
+  subCategory: z
+    .string()
+    .optional(),
+  img: z
+    .array(z.any())
+    .min(1, "At least one product image is required."),
+  keywords: z
+    .array(z.string())
+    .optional()
+    .default([]),
+  discount: z
+    .array(
+      z.object({
+        title: z.string().nonempty("Discount title is required."),
+        percentage: z
+          .number()
+          .min(1, "Discount must be at least 1%.")
+          .max(100, "Discount cannot exceed 100%."),
+      })
+    )
+    .optional(),
+    weightSizeOptions: z.array(z.object({weight:z.number(),size:z.number()})).optional(),
+  variants: z.array(z.string()).optional().default([]),
   defaultVariant: z.string().optional(),
-})
+});
+
+
 
 export type formFields = z.infer<typeof schema>
 
@@ -91,6 +122,9 @@ const Demo: React.FC = () => {
 
   const [keywords, setKeywords] = useState<string[]>([])
   const [keywordInput, setKeywordInput] = useState<string>("")
+  const [weightSizeOptions, setWeightSizeOptions] = useState<{ weight: number; size: number }[]>([])
+  const [weightInput, setWeightInput] = useState<string>("")
+  const [sizeInput, setSizeInput] = useState<string>("")
   const [discounts, setDiscounts] = useState<{ title: string; percentage: number }[]>([])
   const [discountTitle, setDiscountTitle] = useState<string>("")
   const [discountPercentage, setDiscountPercentage] = useState<string>("")
@@ -183,6 +217,25 @@ const Demo: React.FC = () => {
     setValue("keywords", newKeywords)
   }
 
+  const handleAddWeightSize = () => {
+    if (weightInput.trim() && sizeInput.trim()) {
+      const newWeightSizeOptions = [
+        ...weightSizeOptions,
+        { weight: Number(weightInput), size: Number(sizeInput) },
+      ]
+      setWeightSizeOptions(newWeightSizeOptions)
+      setValue("weightSizeOptions", newWeightSizeOptions)
+      setWeightInput("")
+      setSizeInput("")
+    }
+  }
+
+  const handleRemoveWeightSize = (index: number) => {
+    const newWeightSizeOptions = weightSizeOptions.filter((_, i) => i !== index)
+    setWeightSizeOptions(newWeightSizeOptions)
+    setValue("weightSizeOptions", newWeightSizeOptions)
+  }
+
   const handleAddDiscount = () => {
     if (discountTitle.trim() && discountPercentage) {
       const newDiscounts = [...discounts, { title: discountTitle.trim(), percentage: Number(discountPercentage) }]
@@ -269,7 +322,16 @@ const Demo: React.FC = () => {
   const onSubmit: SubmitHandler<formFields> = async (data) => {
     try {
       setIsLoading(true)
+
       console.log(data)
+
+      if(subCategoryOptions.length > 0 && !data.subCategory){
+        toast.error("Add at least one Sub Category")
+        setIsLoading(false)
+        return
+      }
+
+
       if (uploadedFiles.length === 0 && productImages.length === 0) {
         toast.error("Please upload at least one image")
         setIsLoading(false)
@@ -280,7 +342,7 @@ const Demo: React.FC = () => {
 
       // Type-safe way to append form data
       ;(Object.keys(data) as Array<keyof formFields>).forEach((key) => {
-        if (key !== "img" && key !== "keywords" && key !== "discount" && key !== "variants") {
+        if (key !== "img" && key !== "keywords" && key !== "discount" && key !== "variants" && key !== "weightSizeOptions") {
           const value = data[key]
           // Convert all values to strings
           if (value !== undefined) {
@@ -296,6 +358,9 @@ const Demo: React.FC = () => {
       if (keywords.length > 0) {
         formData.append("keywords", JSON.stringify(keywords))
       }
+      if (weightSizeOptions.length > 0) {
+        formData.append("weightSizeOptions", JSON.stringify(weightSizeOptions))
+      }
       if (discounts.length > 0) {
         formData.append("discount", JSON.stringify(discounts))
       }
@@ -307,6 +372,7 @@ const Demo: React.FC = () => {
         uploadedFiles.forEach((file) => {
           formData.append("img", file)
         })
+        console.log(formData,"formdata")
         await createProduct(formData)
         toast.success("Product added successfully")
         router.push("/products")
@@ -330,7 +396,7 @@ const Demo: React.FC = () => {
       }
     } catch (error) {
       console.error("Upload failed:", error)
-      toast.error("Failed to save product")
+      toast.error(error instanceof Error ? error.message : "Failed to save product")
       setIsLoading(false)
     }
   }
@@ -343,14 +409,19 @@ const Demo: React.FC = () => {
       setValue("country", data.product.country)
       setValue("description", data.product.description)
       setValue("faces", data.product.faces)
-      setValue("price", data.product.price)
+      if(data.product.price!=null){
+         setValue("price", data.product.price)
+      }
+      
       setValue("stock", data.product.stock)
       setValue("weight", data.product.weight)
       setValue("img", data.product.img)
+      setValue("subCategory", data.product.subCategory)
       setProductImages(data.product.img)
       setSelectImage(data.product.img[0])
 
       // Set boolean fields
+      // setValue("isSale", data.product.isSale ? "True" : "False")
       setValue("isSale", data.product.isSale ? "True" : "False")
       setValue("isExclusive", data.product.isExclusive ? "True" : "False")
       setValue("isSpecial", data.product.isSpecial ? "True" : "False")
@@ -365,8 +436,12 @@ const Demo: React.FC = () => {
         setKeywords(data.product.keywords)
         setValue("keywords", data.product.keywords)
       }
+      if (data.product.weightSizeOptions) {
+        setWeightSizeOptions(data.product.weightSizeOptions)
+        setValue("weightSizeOptions", data.product.weightSizeOptions)
+      }
       if (data.product.discount) {
-        if(data.product.discount.length === 1){
+        if (data.product.discount.length === 1) {
           setDiableDiscountAdd(true)
         }
         setDiscounts(data.product.discount)
@@ -426,9 +501,10 @@ const Demo: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-8">
-      <button className="absolute top-2 text-4xl rounded-full" onClick={()=> router.push("/products")}><IoArrowBackOutline /></button>
-        
-      
+      <button className="absolute top-2 text-4xl rounded-full" onClick={() => router.push("/products")}>
+        <IoArrowBackOutline />
+      </button>
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className={`text-4xl font-bold text-gray-800 ${josefin.className}`}>
@@ -527,24 +603,6 @@ const Demo: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    <div>
-                      <label htmlFor="weight" className="block text-sm font-semibold text-gray-700 mb-2">
-                        Weight <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="weight"
-                        placeholder="Enter product weight"
-                        className={`bg-gray-50 h-12 px-4 w-full rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${
-                          errors.weight ? "border-red-500" : "border-gray-200"
-                        }`}
-                        {...register("weight")}
-                      />
-                      {errors.weight && (
-                        <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1">
-                          <span className="text-xs">⚠</span> {errors.weight.message}
-                        </p>
-                      )}
-                    </div>
                   </div>
 
                   <div>
@@ -607,7 +665,7 @@ const Demo: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-2">
-                        Price <span className="text-red-500">*</span>
+                        Price
                       </label>
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-lg">
@@ -807,6 +865,8 @@ const Demo: React.FC = () => {
               </div>
             </div>
 
+            
+
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
               <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
                 <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -876,8 +936,6 @@ const Demo: React.FC = () => {
               </div>
             </div>
 
-            
-
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
               <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
                 <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -925,6 +983,67 @@ const Demo: React.FC = () => {
                   ) : (
                     <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                       <p className="text-sm">No keywords added yet. Add keywords to improve searchability.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+              <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
+                  Weight & Size Options
+                </h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="Weight (grams)"
+                      value={weightInput}
+                      onChange={(e) => setWeightInput(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddWeightSize())}
+                      className="bg-gray-50 h-12 px-4 flex-1 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Size"
+                      value={sizeInput}
+                      onChange={(e) => setSizeInput(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddWeightSize())}
+                      className="bg-gray-50 h-12 px-4 flex-1 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleAddWeightSize}
+                      className="bg-primaryColor text-white h-12 px-6 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  {weightSizeOptions.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {weightSizeOptions.map((option, index) => (
+                        <div
+                          key={index}
+                          className="bg-gradient-to-r from-primaryColor/10 to-primaryColor/5 text-primaryColor px-4 py-2 rounded-full flex items-center gap-2 border border-primaryColor/20 transition-all duration-200 hover:shadow-md"
+                        >
+                          <span className="font-medium">{option.weight}g / Size {option.size}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveWeightSize(index)}
+                            className="hover:scale-110 transition-transform"
+                          >
+                            <IoCloseCircle className="text-red-500" size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                      <p className="text-sm">No weight & size options added yet. Add options for product variations.</p>
                     </div>
                   )}
                 </div>
@@ -1187,7 +1306,7 @@ const Demo: React.FC = () => {
                                   field.onChange(selectedValue)
                                 }}
                               >
-                                {subCategoryOptions.map((sub) => (
+                                 {subCategoryOptions.map((sub) => (
                                   <DropdownItem key={sub.name} value={sub.name}>
                                     {sub.name}
                                   </DropdownItem>
