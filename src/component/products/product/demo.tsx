@@ -43,15 +43,13 @@ interface Size {
   price: number
 }
 
-
 const schema = z.object({
   title: z.string().nonempty("Product title is required."),
   description: z.string().nonempty("Product description is required."),
   faces: z.string().nonempty("Please specify the number of faces."),
-  weight: z.string().nonempty("Product weight is required."),
   country: z.string().nonempty("Country of origin is required."),
-  price: z.string().optional().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
-      message: "Stock must be a valid number (0 or more).",
+  price: z.string().optional().refine((val) => !val || (!isNaN(Number(val)) && Number(val) >= 0), {
+      message: "Price must be a valid number (0 or more).",
     }),
   stock: z
     .string()
@@ -59,17 +57,12 @@ const schema = z.object({
     .refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
       message: "Stock must be a valid number (0 or more).",
     }),
-  isSale: z.string(),
-  isSpecial: z.string(),
-  isExclusive: z
-    .string()
-    .nullable(),
-  isTopSelling: z
-    .string(),
+  isSale: z.string().optional().nullable(),
+  isSpecial: z.string().optional().nullable(),
+  isExclusive: z.string().optional().nullable(),
+  isTopSelling: z.string().optional().nullable(),
   category: z.string().nonempty("Product category is required."),
-  subCategory: z
-    .string()
-    .optional(),
+  subCategory: z.string().optional(),
   img: z
     .array(z.any())
     .min(1, "At least one product image is required."),
@@ -88,12 +81,10 @@ const schema = z.object({
       })
     )
     .optional(),
-    weightSizeOptions: z.array(z.object({weight:z.number(),size:z.number()})).optional(),
+  weightSizeOptions: z.array(z.object({weight:z.number(),size:z.number()})).optional(),
   variants: z.array(z.string()).optional().default([]),
   defaultVariant: z.string().optional(),
 });
-
-
 
 export type formFields = z.infer<typeof schema>
 
@@ -414,7 +405,6 @@ const Demo: React.FC = () => {
       }
       
       setValue("stock", data.product.stock)
-      setValue("weight", data.product.weight)
       setValue("img", data.product.img)
       setValue("subCategory", data.product.subCategory)
       setProductImages(data.product.img)
