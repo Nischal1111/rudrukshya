@@ -48,7 +48,16 @@ const schema = z.object({
   description: z.string().nonempty("Product description is required."),
   faces: z.string().nonempty("Please specify the number of faces."),
   country: z.string().nonempty("Country of origin is required."),
-  price: z.string().optional().refine((val) => !val || (!isNaN(Number(val)) && Number(val) >= 0), {
+  price: z
+    .string()
+    .optional()
+    .refine((val) => {
+      // Allow empty string, undefined, or null - price is optional
+      if (!val || val === "" || val === null || val === undefined) return true
+      // If value exists, it must be a valid number >= 0
+      const numVal = Number(val)
+      return !isNaN(numVal) && numVal >= 0
+    }, {
       message: "Price must be a valid number (0 or more).",
     }),
   stock: z
@@ -81,7 +90,15 @@ const schema = z.object({
       })
     )
     .optional(),
-  weightSizeOptions: z.array(z.object({weight:z.number(),size:z.number()})).optional(),
+  weightSizeOptions: z
+    .array(
+      z.object({
+        weight: z.number().positive("Weight must be a positive number"),
+        size: z.number().positive("Size must be a positive number"),
+      })
+    )
+    .optional()
+    .default([]),
   variants: z.array(z.string()).optional().default([]),
   defaultVariant: z.string().optional(),
 });
@@ -102,6 +119,10 @@ const Demo: React.FC = () => {
     reset,
   } = useForm<formFields>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      price: "",
+      weightSizeOptions: [],
+    },
   })
   const [removedImages, setRemovedImages] = useState<string[]>([])
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
@@ -209,15 +230,20 @@ const Demo: React.FC = () => {
   }
 
   const handleAddWeightSize = () => {
-    if (weightInput.trim() && sizeInput.trim()) {
+    const weight = Number(weightInput.trim())
+    const size = Number(sizeInput.trim())
+    
+    if (weightInput.trim() && sizeInput.trim() && !isNaN(weight) && !isNaN(size) && weight > 0 && size > 0) {
       const newWeightSizeOptions = [
         ...weightSizeOptions,
-        { weight: Number(weightInput), size: Number(sizeInput) },
+        { weight, size },
       ]
       setWeightSizeOptions(newWeightSizeOptions)
       setValue("weightSizeOptions", newWeightSizeOptions)
       setWeightInput("")
       setSizeInput("")
+    } else {
+      toast.error("Please enter valid weight and size values (must be positive numbers)")
     }
   }
 
@@ -314,7 +340,8 @@ const Demo: React.FC = () => {
     try {
       setIsLoading(true)
 
-      console.log(data)
+      console.log("Form data:", data)
+      console.log("Form errors:", errors)
 
       if(subCategoryOptions.length > 0 && !data.subCategory){
         toast.error("Add at least one Sub Category")
@@ -335,8 +362,11 @@ const Demo: React.FC = () => {
       ;(Object.keys(data) as Array<keyof formFields>).forEach((key) => {
         if (key !== "img" && key !== "keywords" && key !== "discount" && key !== "variants" && key !== "weightSizeOptions") {
           const value = data[key]
-          // Convert all values to strings
-          if (value !== undefined) {
+          // Convert all values to strings, handle price specially
+          if (key === "price") {
+            // Price is optional, send empty string if undefined/null/empty
+            formData.append(key, value && value !== "" ? String(value) : "")
+          } else if (value !== undefined && value !== null) {
             formData.append(key, String(value))
           }
         }
@@ -400,11 +430,14 @@ const Demo: React.FC = () => {
       setValue("country", data.product.country)
       setValue("description", data.product.description)
       setValue("faces", data.product.faces)
-      if(data.product.price!=null){
-         setValue("price", data.product.price)
+      // Handle price - can be null, undefined, or a number
+      if (data.product.price != null && data.product.price !== undefined) {
+        setValue("price", String(data.product.price))
+      } else {
+        setValue("price", "")
       }
       
-      setValue("stock", data.product.stock)
+      setValue("stock", String(data.product.stock))
       setValue("img", data.product.img)
       setValue("subCategory", data.product.subCategory)
       setProductImages(data.product.img)
@@ -426,9 +459,18 @@ const Demo: React.FC = () => {
         setKeywords(data.product.keywords)
         setValue("keywords", data.product.keywords)
       }
-      if (data.product.weightSizeOptions) {
-        setWeightSizeOptions(data.product.weightSizeOptions)
-        setValue("weightSizeOptions", data.product.weightSizeOptions)
+      if (data.product.weightSizeOptions && Array.isArray(data.product.weightSizeOptions)) {
+        // Ensure weightSizeOptions are in correct format with numbers
+        const formattedOptions = data.product.weightSizeOptions.map((option: any) => ({
+          weight: typeof option.weight === 'number' ? option.weight : Number(option.weight),
+          size: typeof option.size === 'number' ? option.size : Number(option.size),
+        })).filter((option: any) => !isNaN(option.weight) && !isNaN(option.size))
+        
+        setWeightSizeOptions(formattedOptions)
+        setValue("weightSizeOptions", formattedOptions)
+      } else {
+        setWeightSizeOptions([])
+        setValue("weightSizeOptions", [])
       }
       if (data.product.discount) {
         if (data.product.discount.length === 1) {
@@ -506,8 +548,13 @@ const Demo: React.FC = () => {
         </div>
         <Button
           className="bg-primaryColor absolute top-4 right-16 z-50 text-white rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 px-8 py-6 text-base font-medium"
-          type="submit"
-          onClick={handleSubmit(onSubmit)}
+          type="button"
+          onClick={() => {
+            const form = document.getElementById("product-form") as HTMLFormElement
+            if (form) {
+              form.requestSubmit()
+            }
+          }}
           disabled={isLoading}
         >
           <div className="flex items-center gap-2">
@@ -521,7 +568,31 @@ const Demo: React.FC = () => {
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form 
+        id="product-form"
+        onSubmit={handleSubmit(
+          onSubmit,
+          (errors) => {
+            console.error("Form validation errors:", errors)
+            // Get the first error message
+            const firstError = Object.values(errors)[0]
+            if (firstError?.message) {
+              toast.error(firstError.message)
+            } else {
+              // If no specific message, show which fields have errors
+              const errorFields = Object.keys(errors).join(", ")
+              toast.error(`Please fix errors in: ${errorFields}`)
+            }
+            // Scroll to first error field
+            const firstErrorField = document.querySelector(`[name="${Object.keys(errors)[0]}"]`) as HTMLElement
+            if (firstErrorField) {
+              firstErrorField.scrollIntoView({ behavior: "smooth", block: "center" })
+              firstErrorField.focus()
+            }
+          }
+        )} 
+        className="space-y-6"
+      >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left column - General Information */}
           <div className="lg:col-span-2 space-y-6">
@@ -663,7 +734,7 @@ const Demo: React.FC = () => {
                         </span>
                         <input
                           id="price"
-                          type="number"
+                          type="string"
                           placeholder="0.00"
                           className={`bg-gray-50 h-12 px-4 pl-10 w-full rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${
                             errors.price ? "border-red-500" : "border-gray-200"
