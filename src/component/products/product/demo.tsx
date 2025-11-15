@@ -18,6 +18,7 @@ import { getAllCategories } from "@/services/categories"
 import { useParams, useRouter } from "next/navigation"
 import { josefin } from "@/utils/font"
 import { IoArrowBackOutline } from "react-icons/io5"
+import { TailwindSwitch } from "@/components/ui/switch"
 
 interface SubCategory {
   name: string
@@ -41,6 +42,7 @@ interface Variant {
 interface Size {
   name: string
   price: number
+  size: string
 }
 
 const schema = z.object({
@@ -70,12 +72,18 @@ const schema = z.object({
   isSpecial: z.string().optional().nullable(),
   isExclusive: z.string().optional().nullable(),
   isTopSelling: z.string().optional().nullable(),
+  isLabCertified: z.string().optional().nullable(),
+  isExpertVerified: z.string().optional().nullable(),
   category: z.string().nonempty("Product category is required."),
   subCategory: z.string().optional(),
   img: z
     .array(z.any())
     .min(1, "At least one product image is required."),
   keywords: z
+    .array(z.string())
+    .optional()
+    .default([]),
+  benefits: z
     .array(z.string())
     .optional()
     .default([]),
@@ -93,8 +101,8 @@ const schema = z.object({
   weightSizeOptions: z
     .array(
       z.object({
-        weight: z.number().positive("Weight must be a positive number"),
-        size: z.number().positive("Size must be a positive number"),
+        weight: z.number().default(0),
+        size: z.string().nonempty("Size is required."),
       })
     )
     .optional()
@@ -134,8 +142,9 @@ const Demo: React.FC = () => {
 
   const [keywords, setKeywords] = useState<string[]>([])
   const [keywordInput, setKeywordInput] = useState<string>("")
-  const [weightSizeOptions, setWeightSizeOptions] = useState<{ weight: number; size: number }[]>([])
-  const [weightInput, setWeightInput] = useState<string>("")
+  const [benefits, setBenefits] = useState<string[]>([])
+  const [benefitInput, setBenefitInput] = useState<string>("")
+  const [weightSizeOptions, setWeightSizeOptions] = useState<{ weight: number; size: string }[]>([])
   const [sizeInput, setSizeInput] = useState<string>("")
   const [discounts, setDiscounts] = useState<{ title: string; percentage: number }[]>([])
   const [discountTitle, setDiscountTitle] = useState<string>("")
@@ -146,6 +155,8 @@ const Demo: React.FC = () => {
   const [sizes, setSizes] = useState<Size[]>([])
   const [newSizeName, setNewSizeName] = useState<string>("")
   const [newSizePrice, setNewSizePrice] = useState<string>("")
+  const [newSizeMm, setNewSizeMm] = useState<string>("")
+  const [contactForPrice, setContactForPrice] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isDragging, setIsDragging] = useState<boolean>(false)
 
@@ -229,21 +240,36 @@ const Demo: React.FC = () => {
     setValue("keywords", newKeywords)
   }
 
+  const handleAddBenefit = () => {
+    if (benefitInput.trim()) {
+      const newBenefits = [...benefits, benefitInput.trim()]
+      setBenefits(newBenefits)
+      setValue("benefits", newBenefits)
+      setBenefitInput("")
+    }
+  }
+
+  const handleRemoveBenefit = (index: number) => {
+    const newBenefits = benefits.filter((_, i) => i !== index)
+    setBenefits(newBenefits)
+    setValue("benefits", newBenefits)
+  }
+
   const handleAddWeightSize = () => {
-    const weight = Number(weightInput.trim())
-    const size = Number(sizeInput.trim())
+    const size = sizeInput.trim()
     
-    if (weightInput.trim() && sizeInput.trim() && !isNaN(weight) && !isNaN(size) && weight > 0 && size > 0) {
+    if (size) {
+      // Ensure "mm" is included in the size value
+      const sizeWithUnit = size.toLowerCase().includes('mm') ? size : `${size} mm`
       const newWeightSizeOptions = [
         ...weightSizeOptions,
-        { weight, size },
+        { weight: 0, size: sizeWithUnit },
       ]
       setWeightSizeOptions(newWeightSizeOptions)
       setValue("weightSizeOptions", newWeightSizeOptions)
-      setWeightInput("")
       setSizeInput("")
     } else {
-      toast.error("Please enter valid weight and size values (must be positive numbers)")
+      toast.error("Please enter a valid size value")
     }
   }
 
@@ -272,11 +298,19 @@ const Demo: React.FC = () => {
   }
 
   const handleAddSize = () => {
-    if (newSizeName.trim() && newSizePrice) {
-      const newSizes = [...sizes, { name: newSizeName.trim(), price: Number(newSizePrice) }]
+    if (newSizeName.trim() && newSizePrice && newSizeMm.trim()) {
+      // Ensure "mm" is included in the size value
+      const sizeMm = newSizeMm.trim()
+      const sizeWithUnit = sizeMm.toLowerCase().includes('mm') ? sizeMm : `${sizeMm} mm`
+      const newSizes = [...sizes, { 
+        name: newSizeName.trim(), 
+        price: Number(newSizePrice), 
+        size: sizeWithUnit
+      }]
       setSizes(newSizes)
       setNewSizeName("")
       setNewSizePrice("")
+      setNewSizeMm("")
     }
   }
 
@@ -349,6 +383,13 @@ const Demo: React.FC = () => {
         return
       }
 
+      // Validate price: either price > 0 or contactForPrice toggle is on
+      const price = Number(data.price) || 0
+      if (!contactForPrice && price <= 0) {
+        toast.error("Please enter a valid price (> 0) or enable 'Contact for Price'")
+        setIsLoading(false)
+        return
+      }
 
       if (uploadedFiles.length === 0 && productImages.length === 0) {
         toast.error("Please upload at least one image")
@@ -360,12 +401,16 @@ const Demo: React.FC = () => {
 
       // Type-safe way to append form data
       ;(Object.keys(data) as Array<keyof formFields>).forEach((key) => {
-        if (key !== "img" && key !== "keywords" && key !== "discount" && key !== "variants" && key !== "weightSizeOptions") {
+        if (key !== "img" && key !== "keywords" && key !== "benefits" && key !== "discount" && key !== "variants" && key !== "weightSizeOptions") {
           const value = data[key]
           // Convert all values to strings, handle price specially
           if (key === "price") {
-            // Price is optional, send empty string if undefined/null/empty
-            formData.append(key, value && value !== "" ? String(value) : "")
+            // If contactForPrice is enabled, send empty string, otherwise send the price
+            if (contactForPrice) {
+              formData.append(key, "")
+            } else {
+              formData.append(key, value && value !== "" ? String(value) : "")
+            }
           } else if (value !== undefined && value !== null) {
             formData.append(key, String(value))
           }
@@ -379,8 +424,16 @@ const Demo: React.FC = () => {
       if (keywords.length > 0) {
         formData.append("keywords", JSON.stringify(keywords))
       }
+      if (benefits.length > 0) {
+        formData.append("benefits", JSON.stringify(benefits))
+      }
       if (weightSizeOptions.length > 0) {
-        formData.append("weightSizeOptions", JSON.stringify(weightSizeOptions))
+        // Ensure weight is always 0 for all options
+        const formattedOptions = weightSizeOptions.map(option => ({
+          weight: 0,
+          size: option.size
+        }))
+        formData.append("weightSizeOptions", JSON.stringify(formattedOptions))
       }
       if (discounts.length > 0) {
         formData.append("discount", JSON.stringify(discounts))
@@ -431,10 +484,12 @@ const Demo: React.FC = () => {
       setValue("description", data.product.description)
       setValue("faces", data.product.faces)
       // Handle price - can be null, undefined, or a number
-      if (data.product.price != null && data.product.price !== undefined) {
+      if (data.product.price != null && data.product.price !== undefined && data.product.price > 0) {
         setValue("price", String(data.product.price))
+        setContactForPrice(false)
       } else {
         setValue("price", "")
+        setContactForPrice(true) // If no price or price is 0, assume contact for price
       }
       
       setValue("stock", String(data.product.stock))
@@ -449,6 +504,8 @@ const Demo: React.FC = () => {
       setValue("isExclusive", data.product.isExclusive ? "True" : "False")
       setValue("isSpecial", data.product.isSpecial ? "True" : "False")
       setValue("isTopSelling", data.product.isTopSelling ? "True" : "False")
+      setValue("isLabCertified", data.product.isLabCertified ? "True" : "False")
+      setValue("isExpertVerified", data.product.isExpertVerified ? "True" : "False")
       setValue("subCategory", data.product.subCategory)
 
       if (data.product.size && Array.isArray(data.product.size)) {
@@ -459,12 +516,16 @@ const Demo: React.FC = () => {
         setKeywords(data.product.keywords)
         setValue("keywords", data.product.keywords)
       }
+      if (data.product.benefits) {
+        setBenefits(data.product.benefits)
+        setValue("benefits", data.product.benefits)
+      }
       if (data.product.weightSizeOptions && Array.isArray(data.product.weightSizeOptions)) {
-        // Ensure weightSizeOptions are in correct format with numbers
+        // Ensure weightSizeOptions are in correct format with size as string and weight as 0
         const formattedOptions = data.product.weightSizeOptions.map((option: any) => ({
-          weight: typeof option.weight === 'number' ? option.weight : Number(option.weight),
-          size: typeof option.size === 'number' ? option.size : Number(option.size),
-        })).filter((option: any) => !isNaN(option.weight) && !isNaN(option.size))
+          weight: 0,
+          size: typeof option.size === 'string' ? option.size : String(option.size || ''),
+        })).filter((option: any) => option.size && option.size.trim() !== '')
         
         setWeightSizeOptions(formattedOptions)
         setValue("weightSizeOptions", formattedOptions)
@@ -728,19 +789,34 @@ const Demo: React.FC = () => {
                       <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-2">
                         Price
                       </label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-lg">
-                          $
-                        </span>
-                        <input
-                          id="price"
-                          type="string"
-                          placeholder="0.00"
-                          className={`bg-gray-50 h-12 px-4 pl-10 w-full rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${
-                            errors.price ? "border-red-500" : "border-gray-200"
-                          }`}
-                          {...register("price")}
-                        />
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-lg">
+                            $
+                          </span>
+                          <input
+                            id="price"
+                            type="string"
+                            placeholder="0.00"
+                            disabled={contactForPrice}
+                            className={`bg-gray-50 h-12 px-4 pl-10 w-full rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${
+                              errors.price ? "border-red-500" : "border-gray-200"
+                            } ${contactForPrice ? "opacity-50 cursor-not-allowed" : ""}`}
+                            {...register("price")}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 px-3 h-12 bg-gray-50 rounded-xl border-2 border-gray-200">
+                          <TailwindSwitch
+                            checked={contactForPrice}
+                            onCheckedChange={(checked) => {
+                              setContactForPrice(checked)
+                              if (checked) {
+                                setValue("price", "")
+                              }
+                            }}
+                          />
+                          <span className="text-xs font-medium text-gray-700 whitespace-nowrap">Contact for Price</span>
+                        </div>
                       </div>
                       {errors.price && (
                         <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1">
@@ -771,7 +847,7 @@ const Demo: React.FC = () => {
 
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Product Flags</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                       <div>
                         <div className="text-xs font-medium text-gray-600 mb-1.5">Sale</div>
                         <Controller
@@ -920,13 +996,85 @@ const Demo: React.FC = () => {
                           )}
                         />
                       </div>
+                      <div>
+                        <div className="text-xs font-medium text-gray-600 mb-1.5">Lab Certified</div>
+                        <Controller
+                          name="isLabCertified"
+                          control={control}
+                          defaultValue=""
+                          render={({ field }) => (
+                            <Dropdown>
+                              <DropdownTrigger>
+                                <Button
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
+                                    errors.isLabCertified ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
+                                  variant="bordered"
+                                >
+                                  <span>{field.value || "Select"}</span>
+                                  <MdKeyboardArrowDown className="text-gray-500" size={18} />
+                                </Button>
+                              </DropdownTrigger>
+                              <DropdownMenu
+                                disallowEmptySelection
+                                aria-label="Lab Certified selection"
+                                selectedKeys={field.value ? new Set([field.value]) : undefined}
+                                selectionMode="single"
+                                variant="flat"
+                                onSelectionChange={(keys) => {
+                                  const selectedValue = Array.from(keys)[0]
+                                  field.onChange(selectedValue)
+                                }}
+                              >
+                                <DropdownItem key="True">True</DropdownItem>
+                                <DropdownItem key="False">False</DropdownItem>
+                              </DropdownMenu>
+                            </Dropdown>
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium text-gray-600 mb-1.5">Expert Verified</div>
+                        <Controller
+                          name="isExpertVerified"
+                          control={control}
+                          defaultValue=""
+                          render={({ field }) => (
+                            <Dropdown>
+                              <DropdownTrigger>
+                                <Button
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
+                                    errors.isExpertVerified ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
+                                  variant="bordered"
+                                >
+                                  <span>{field.value || "Select"}</span>
+                                  <MdKeyboardArrowDown className="text-gray-500" size={18} />
+                                </Button>
+                              </DropdownTrigger>
+                              <DropdownMenu
+                                disallowEmptySelection
+                                aria-label="Expert Verified selection"
+                                selectedKeys={field.value ? new Set([field.value]) : undefined}
+                                selectionMode="single"
+                                variant="flat"
+                                onSelectionChange={(keys) => {
+                                  const selectedValue = Array.from(keys)[0]
+                                  field.onChange(selectedValue)
+                                }}
+                              >
+                                <DropdownItem key="True">True</DropdownItem>
+                                <DropdownItem key="False">False</DropdownItem>
+                              </DropdownMenu>
+                            </Dropdown>
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-
-            
 
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
               <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
@@ -940,7 +1088,7 @@ const Demo: React.FC = () => {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Size name (e.g., Regular, Medium)"
+                      placeholder="Title"
                       value={newSizeName}
                       onChange={(e) => setNewSizeName(e.target.value)}
                       className="bg-gray-50 h-12 px-4 flex-1 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
@@ -955,6 +1103,13 @@ const Demo: React.FC = () => {
                         className="bg-gray-50 h-12 px-4 pl-8 w-full rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
                       />
                     </div>
+                    <input
+                      type="text"
+                      placeholder="Size (mm)"
+                      value={newSizeMm}
+                      onChange={(e) => setNewSizeMm(e.target.value)}
+                      className="bg-gray-50 h-12 px-4 flex-1 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+                    />
                     <Button
                       type="button"
                       onClick={handleAddSize}
@@ -977,6 +1132,7 @@ const Demo: React.FC = () => {
                               {size.name}
                             </div>
                             <span className="font-medium text-gray-700">${size.price}</span>
+                            <span className="font-medium text-gray-600">{size.size}</span>
                           </div>
                           <button
                             type="button"
@@ -1054,47 +1210,39 @@ const Demo: React.FC = () => {
               <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
                 <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                   <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
-                  Weight & Size Options
+                  Benefits
                 </h2>
               </div>
               <div className="p-6">
                 <div className="space-y-4">
                   <div className="flex gap-2">
                     <input
-                      type="number"
-                      placeholder="Weight (grams)"
-                      value={weightInput}
-                      onChange={(e) => setWeightInput(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddWeightSize())}
-                      className="bg-gray-50 h-12 px-4 flex-1 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Size"
-                      value={sizeInput}
-                      onChange={(e) => setSizeInput(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddWeightSize())}
+                      type="text"
+                      placeholder="Add benefit (e.g., Promotes spiritual growth)"
+                      value={benefitInput}
+                      onChange={(e) => setBenefitInput(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddBenefit())}
                       className="bg-gray-50 h-12 px-4 flex-1 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
                     />
                     <Button
                       type="button"
-                      onClick={handleAddWeightSize}
+                      onClick={handleAddBenefit}
                       className="bg-primaryColor text-white h-12 px-6 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
                     >
                       Add
                     </Button>
                   </div>
-                  {weightSizeOptions.length > 0 ? (
+                  {benefits.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {weightSizeOptions.map((option, index) => (
+                      {benefits.map((benefit, index) => (
                         <div
                           key={index}
                           className="bg-gradient-to-r from-primaryColor/10 to-primaryColor/5 text-primaryColor px-4 py-2 rounded-full flex items-center gap-2 border border-primaryColor/20 transition-all duration-200 hover:shadow-md"
                         >
-                          <span className="font-medium">{option.weight}g / Size {option.size}</span>
+                          <span className="font-medium">{benefit}</span>
                           <button
                             type="button"
-                            onClick={() => handleRemoveWeightSize(index)}
+                            onClick={() => handleRemoveBenefit(index)}
                             className="hover:scale-110 transition-transform"
                           >
                             <IoCloseCircle className="text-red-500" size={18} />
@@ -1104,7 +1252,7 @@ const Demo: React.FC = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                      <p className="text-sm">No weight & size options added yet. Add options for product variations.</p>
+                      <p className="text-sm">No benefits added yet. Add benefits to highlight product advantages.</p>
                     </div>
                   )}
                 </div>
