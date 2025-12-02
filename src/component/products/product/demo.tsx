@@ -41,7 +41,7 @@ interface Variant {
 
 interface Size {
   name: string
-  price: number
+  price: number | null
   size: string
 }
 
@@ -159,6 +159,7 @@ const Demo: React.FC = () => {
   const [contactForPrice, setContactForPrice] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isDragging, setIsDragging] = useState<boolean>(false)
+  const [editingDiscountIndex, setEditingDiscountIndex] = useState<number | null>(null)
 
   // Watch the image field to handle the selected images
   const watchImages = watch("img", [])
@@ -186,36 +187,45 @@ const Demo: React.FC = () => {
 
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files)
-      const fileUrls = files.map((file) => URL.createObjectURL(file))
-
-      if (productImages.length + files.length > 4) {
-        toast.error("You can only upload a maximum of 4 images.")
-        return
-      }
-
-      setUploadedFiles((prev) => [...prev, ...files])
-      setProductImages((prev) => [...prev, ...fileUrls])
-      setValue("img", [...watchImages, ...fileUrls]) // For validation
+  if (e.target.files && e.target.files.length > 0) {
+    const files = Array.from(e.target.files)
+    
+    if (productImages.length + files.length > 4) {
+      toast.error("You can only upload a maximum of 4 images.")
+      return
     }
+
+    const fileUrls = files.map((file) => URL.createObjectURL(file))
+
+    setUploadedFiles((prev) => [...prev, ...files])
+    setProductImages((prev) => [...prev, ...fileUrls])
+    setValue("img", [...productImages, ...fileUrls]) // Use productImages instead of watchImages
   }
+}
 
   const handleRemoveImage = (indexToRemove: number): void => {
-    const imageToRemove = productImages[indexToRemove]
+  const imageToRemove = productImages[indexToRemove]
 
-    if (imageToRemove.startsWith("http")) {
-      setRemovedImages((prev) => [...prev, imageToRemove])
-    }
-
-    const newImages = productImages.filter((_, i) => i !== indexToRemove)
-    const newFiles = uploadedFiles.filter((_, i) => i !== indexToRemove)
-
-    setProductImages(newImages)
+  if (imageToRemove.startsWith("http")) {
+    setRemovedImages((prev) => [...prev, imageToRemove])
+  } else {
+    // For newly uploaded files, we need to find and remove the corresponding file
+    // Count how many http images come before this index
+    const httpImagesBefore = productImages.slice(0, indexToRemove).filter(img => img.startsWith("http")).length
+    const fileIndexToRemove = indexToRemove - httpImagesBefore
+    
+    const newFiles = uploadedFiles.filter((_, i) => i !== fileIndexToRemove)
     setUploadedFiles(newFiles)
-    setValue("img", newImages)
+  }
+
+  const newImages = productImages.filter((_, i) => i !== indexToRemove)
+  setProductImages(newImages)
+  setValue("img", newImages)
+  
+  if (selectImage === imageToRemove) {
     setSelectImage(newImages[0] || "")
   }
+}
 
   useEffect(() => {
     if (productImages.length > 0) {
@@ -280,32 +290,69 @@ const Demo: React.FC = () => {
   }
 
   const handleAddDiscount = () => {
-    if (discountTitle.trim() && discountPercentage) {
+  if (discountTitle.trim() && discountPercentage) {
+    if (editingDiscountIndex !== null) {
+      // Update existing discount
+      const newDiscounts = [...discounts]
+      newDiscounts[editingDiscountIndex] = { 
+        title: discountTitle.trim(), 
+        percentage: Number(discountPercentage) 
+      }
+      setDiscounts(newDiscounts)
+      setValue("discount", newDiscounts)
+      setEditingDiscountIndex(null)
+    } else {
+      // Add new discount
       const newDiscounts = [...discounts, { title: discountTitle.trim(), percentage: Number(discountPercentage) }]
       setDiscounts(newDiscounts)
       setValue("discount", newDiscounts)
-      setDiscountTitle("")
-      setDiscountPercentage("")
       setDiableDiscountAdd(true)
     }
+    setDiscountTitle("")
+    setDiscountPercentage("")
   }
+}
 
-  const handleRemoveDiscount = (index: number) => {
-    const newDiscounts = discounts.filter((_, i) => i !== index)
-    setDiableDiscountAdd(false)
-    setDiscounts(newDiscounts)
-    setValue("discount", newDiscounts)
+// Add function to start editing
+const handleEditDiscount = (index: number) => {
+  setEditingDiscountIndex(index)
+  setDiscountTitle(discounts[index].title)
+  setDiscountPercentage(String(discounts[index].percentage))
+  setDiableDiscountAdd(false)
+}
+
+// Add function to cancel editing
+const handleCancelEditDiscount = () => {
+  setEditingDiscountIndex(null)
+  setDiscountTitle("")
+  setDiscountPercentage("")
+  setDiableDiscountAdd(discounts.length > 0)
+}
+
+// Update handleRemoveDiscount
+const handleRemoveDiscount = (index: number) => {
+  const newDiscounts = discounts.filter((_, i) => i !== index)
+  setDiableDiscountAdd(false)
+  setDiscounts(newDiscounts)
+  setValue("discount", newDiscounts)
+  
+  // If we were editing this discount, cancel the edit
+  if (editingDiscountIndex === index) {
+    setEditingDiscountIndex(null)
+    setDiscountTitle("")
+    setDiscountPercentage("")
   }
+}
 
   const handleAddSize = () => {
-    if (newSizeName.trim() && newSizePrice && newSizeMm.trim()) {
+    if (newSizeName.trim() || newSizePrice || newSizeMm.trim()) {
       // Ensure "mm" is included in the size value
       const sizeMm = newSizeMm.trim()
       const sizeWithUnit = sizeMm.toLowerCase().includes('mm') ? sizeMm : `${sizeMm} mm`
       const newSizes = [...sizes, { 
         name: newSizeName.trim(), 
-        price: Number(newSizePrice), 
-        size: sizeWithUnit
+        price: newSizePrice ? Number(newSizePrice): null, 
+        size: newSizeMm?sizeWithUnit: ""
       }]
       setSizes(newSizes)
       setNewSizeName("")
@@ -1131,7 +1178,7 @@ const Demo: React.FC = () => {
                             <div className="bg-primaryColor/10 text-primaryColor px-3 py-1 rounded-lg font-semibold text-sm">
                               {size.name}
                             </div>
-                            <span className="font-medium text-gray-700">${size.price}</span>
+                            <span className="font-medium text-gray-700">{size.price?`$${size.price}`:""}</span>
                             <span className="font-medium text-gray-600">{size.size}</span>
                           </div>
                           <button
@@ -1153,7 +1200,7 @@ const Demo: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+            {/* <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
               <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
                 <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                   <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
@@ -1257,181 +1304,101 @@ const Demo: React.FC = () => {
                   )}
                 </div>
               </div>
-            </div>
+            </div> */}
 
-            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
-              <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                  <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
-                  Discounts
-                </h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input
-                      type="text"
-                      placeholder="Discount title"
-                      value={discountTitle}
-                      disabled={diableDiscountAdd}
-                      onChange={(e) => setDiscountTitle(e.target.value)}
-                      className="bg-gray-50 h-12 px-4 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Percentage"
-                      value={discountPercentage}
-                      disabled={diableDiscountAdd}
-                      onChange={(e) => setDiscountPercentage(e.target.value)}
-                      className="bg-gray-50 h-12 px-4 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-                    />
-                    <Button
-                      type="button"
-                      disabled={diableDiscountAdd}
-                      onClick={handleAddDiscount}
-                      className="bg-primaryColor text-white h-12 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
-                    >
-                      Add Discount
-                    </Button>
-                  </div>
-                  {discounts.length > 0 ? (
-                    <div className="space-y-2">
-                      {discounts.map((discount, index) => (
-                        <div
-                          key={index}
-                          className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl flex justify-between items-center border border-gray-200 transition-all duration-200 hover:shadow-md"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="bg-primaryColor/10 text-primaryColor px-3 py-1 rounded-lg font-bold text-sm">
-                              {discount.percentage}%
-                            </div>
-                            <span className="font-medium text-gray-700">{discount.title}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveDiscount(index)}
-                            className="hover:scale-110 transition-transform"
-                          >
-                            <IoCloseCircle className="text-red-500" size={24} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                      <p className="text-sm">No discounts added yet. Add discounts to attract customers.</p>
-                    </div>
-                  )}
+           <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+  <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
+    <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+      <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
+      Discounts
+    </h2>
+  </div>
+  <div className="p-6">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input
+          type="text"
+          placeholder="Discount title"
+          value={discountTitle}
+          disabled={diableDiscountAdd && editingDiscountIndex === null}
+          onChange={(e) => setDiscountTitle(e.target.value)}
+          className="bg-gray-50 h-12 px-4 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+        />
+        <input
+          type="number"
+          placeholder="Percentage"
+          value={discountPercentage}
+          disabled={diableDiscountAdd && editingDiscountIndex === null}
+          onChange={(e) => setDiscountPercentage(e.target.value)}
+          className="bg-gray-50 h-12 px-4 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+        />
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            disabled={diableDiscountAdd && editingDiscountIndex === null}
+            onClick={handleAddDiscount}
+            className="bg-primaryColor text-white h-12 flex-1 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+          >
+            {editingDiscountIndex !== null ? "Update" : "Add Discount"}
+          </Button>
+          {editingDiscountIndex !== null && (
+            <Button
+              type="button"
+              onClick={handleCancelEditDiscount}
+              className="bg-gray-500 text-white h-12 px-4 rounded-xl hover:bg-gray-600 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
+      </div>
+      {discounts.length > 0 ? (
+        <div className="space-y-2">
+          {discounts.map((discount, index) => (
+            <div
+              key={index}
+              className={`bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl flex justify-between items-center border-2 transition-all duration-200 hover:shadow-md ${
+                editingDiscountIndex === index ? "border-primaryColor bg-primaryColor/5" : "border-gray-200"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-primaryColor/10 text-primaryColor px-3 py-1 rounded-lg font-bold text-sm">
+                  {discount.percentage}%
                 </div>
+                <span className="font-medium text-gray-700">{discount.title}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleEditDiscount(index)}
+                  className="hover:scale-110 transition-transform bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium"
+                  disabled={editingDiscountIndex !== null && editingDiscountIndex !== index}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveDiscount(index)}
+                  className="hover:scale-110 transition-transform"
+                >
+                  <IoCloseCircle className="text-red-500" size={24} />
+                </button>
               </div>
             </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+          <p className="text-sm">No discounts added yet. Add discounts to attract customers.</p>
+        </div>
+      )}
+    </div>
+  </div>
+</div>
           </div>
 
           {/* Right column - Images and Category */}
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
-              <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                  <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
-                  Product Images
-                </h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div
-                    className="relative"
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                  >
-                    {selectImage ? (
-                      <div className="relative group">
-                        <Image
-                          alt="Product Image"
-                          src={selectImage || "/placeholder.svg"}
-                          width={416}
-                          height={320}
-                          quality={100}
-                          className="h-72 w-full rounded-xl object-cover border-2 border-gray-200 shadow-sm"
-                        />
-                        <button
-                          type="button"
-                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                          onClick={() => handleRemoveImage(productImages.indexOf(selectImage))}
-                        >
-                          <IoCloseCircle size={32} className="text-red-500 bg-white rounded-full shadow-lg" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        className={`h-72 w-full rounded-xl flex flex-col items-center justify-center border-2 border-dashed transition-all duration-200 ${
-                          isDragging
-                            ? "border-primaryColor bg-primaryColor/5 scale-105"
-                            : errors.img
-                              ? "border-red-300 bg-red-50"
-                              : "border-gray-300 bg-gray-50"
-                        }`}
-                      >
-                        {errors.img ? (
-                          <div className="text-center">
-                            <p className="text-red-500 font-medium">⚠ {errors.img.message}</p>
-                            <p className="text-gray-400 text-sm mt-2">Drag and drop or click to upload</p>
-                          </div>
-                        ) : (
-                          <div className="text-center">
-                            <CiCirclePlus size={48} className="text-gray-400 mx-auto mb-3" />
-                            <p className="text-gray-600 font-medium">Drag and drop images here</p>
-                            <p className="text-gray-400 text-sm mt-1">or click the + button below</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2 overflow-x-auto py-2 scrollbar-hide">
-                    {productImages.map((img, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        className={`relative rounded-xl flex-shrink-0 h-20 w-20 overflow-hidden transition-all duration-200 ${
-                          selectImage === img
-                            ? "ring-4 ring-primaryColor shadow-lg scale-105"
-                            : "ring-2 ring-gray-200 hover:ring-primaryColor/50"
-                        }`}
-                        onClick={() => handleSelectImage(index)}
-                      >
-                        <Image
-                          alt={`Product thumbnail ${index + 1}`}
-                          src={img || "/placeholder.svg"}
-                          width={80}
-                          height={80}
-                          className="object-cover h-full w-full"
-                        />
-                      </button>
-                    ))}
-
-                    <label
-                      htmlFor="upload-image"
-                      className="flex-shrink-0 h-20 w-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-primaryColor/5 hover:border-primaryColor transition-all duration-200"
-                    >
-                      <CiCirclePlus size={32} className="text-primaryColor" />
-                      <input
-                        id="upload-image"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        multiple
-                        onChange={handleImageUpload}
-                      />
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500 text-center">
-                    Upload up to 4 images. First image will be the main product image.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
               <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
                 <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -1658,6 +1625,188 @@ const Demo: React.FC = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+                        <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+              <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
+                  Keywords
+                </h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Add keyword (e.g., handmade, organic)"
+                      value={keywordInput}
+                      onChange={(e) => setKeywordInput(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddKeyword())}
+                      className="bg-gray-50 h-12 px-4 flex-1 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleAddKeyword}
+                      className="bg-primaryColor text-white h-12 px-6 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  {keywords.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {keywords.map((keyword, index) => (
+                        <div
+                          key={index}
+                          className="bg-gradient-to-r from-primaryColor/10 to-primaryColor/5 text-primaryColor px-4 py-2 rounded-full flex items-center gap-2 border border-primaryColor/20 transition-all duration-200 hover:shadow-md"
+                        >
+                          <span className="font-medium">{keyword}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveKeyword(index)}
+                            className="hover:scale-110 transition-transform"
+                          >
+                            <IoCloseCircle className="text-red-500" size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                      <p className="text-sm">No keywords added yet. Add keywords to improve searchability.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+              <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
+                  Benefits
+                </h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Add benefit (e.g., Promotes spiritual growth)"
+                      value={benefitInput}
+                      onChange={(e) => setBenefitInput(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddBenefit())}
+                      className="bg-gray-50 h-12 px-4 flex-1 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleAddBenefit}
+                      className="bg-primaryColor text-white h-12 px-6 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                  {benefits.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {benefits.map((benefit, index) => (
+                        <div
+                          key={index}
+                          className="bg-gradient-to-r from-primaryColor/10 to-primaryColor/5 text-primaryColor px-4 py-2 rounded-full flex items-center gap-2 border border-primaryColor/20 transition-all duration-200 hover:shadow-md"
+                        >
+                          <span className="font-medium">{benefit}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBenefit(index)}
+                            className="hover:scale-110 transition-transform"
+                          >
+                            <IoCloseCircle className="text-red-500" size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                      <p className="text-sm">No benefits added yet. Add benefits to highlight product advantages.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="w-full">
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+            <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
+                Product Images
+              </h2>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="relative" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+                  <div
+                    className={`h-40 w-full rounded-xl flex flex-col items-center justify-center border-2 border-dashed transition-all duration-200 ${
+                      isDragging
+                        ? "border-primaryColor bg-primaryColor/5 scale-105"
+                        : errors.img
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-300 bg-gray-50"
+                    }`}
+                  >
+                    {errors.img ? (
+                      <div className="text-center">
+                        <p className="text-red-500 font-medium">⚠ {errors.img.message}</p>
+                        <p className="text-gray-400 text-sm mt-2">Drag and drop or click to upload</p>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <CiCirclePlus size={48} className="text-gray-400 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-gray-600">Drag and drop images here</p>
+                        <p className="text-gray-400 text-sm mt-1">Upload up to 4 images</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {productImages.map((img, index) => (
+                    <div key={index} className="relative group">
+                      {/* Increased min-height and made grid full width */}
+                      <div className="relative bg-gray-50 rounded-xl border-2 border-gray-200 overflow-hidden flex items-center justify-center min-h-80">
+                        <Image
+                          alt={`Product image ${index + 1}`}
+                          src={img || "/placeholder.svg"}
+                          width={500}
+                          height={500}
+                          quality={100}
+                          className="object-contain w-full h-full"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20 rounded-xl"
+                        onClick={() => handleRemoveImage(index)}
+                      >
+                        <IoCloseCircle size={48} className="text-red-500 bg-white rounded-full shadow-lg" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {productImages.length < 4 && (
+                    <label className="relative bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 overflow-hidden flex items-center justify-center cursor-pointer hover:bg-primaryColor/5 hover:border-primaryColor transition-all duration-200 min-h-80">
+                      <div className="text-center">
+                        <CiCirclePlus size={40} className="text-primaryColor mx-auto mb-2" />
+                        <p className="text-sm font-medium text-gray-600">Add Image</p>
+                      </div>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    </label>
+                  )}
+                </div>
+
+                <p className="text-xs text-gray-500 text-center">
+                  {productImages.length}/4 images uploaded. Use object-contain display.
+                </p>
               </div>
             </div>
           </div>
