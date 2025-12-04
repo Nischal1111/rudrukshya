@@ -1773,7 +1773,7 @@ const handleRemoveDiscount = (index: number) => {
                   {productImages.map((img, index) => (
                     <div key={index} className="relative group">
                       {/* Increased min-height and made grid full width */}
-                      <div className="relative bg-gray-50 rounded-xl border-2 border-gray-200 overflow-hidden flex items-center justify-center min-h-80">
+                      <div className="relative bg-gray-50 rounded-xl border-2 border-gray-200 overflow-hidden flex items-center justify-center aspect-square">
                         <Image
                           alt={`Product image ${index + 1}`}
                           src={img || "/placeholder.svg"}

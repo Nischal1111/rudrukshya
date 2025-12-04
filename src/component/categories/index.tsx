@@ -50,6 +50,7 @@ import {
 import { MdDelete } from "react-icons/md";
 import {
   createSubCategory,
+  createSubCategoryByName,
   deleteSubCategory,
   getAllCategories,
 } from "@/services/categories";
@@ -121,6 +122,7 @@ export const columns: ColumnDef<Payment>[] = [
 export default function Categories() {
   const [users, setUsers] = useState<Payment[]>([]);
   const [users1, setUsers1] = useState<Payment[]>([]);
+  const [users2, setUsers2] = useState<Payment[]>([]);
   const [name, setName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +132,7 @@ export default function Categories() {
   const [rowSelection, setRowSelection] = useState({});
   const [searchMala, setSearchMala] = useState("");
   const [searchBracelet, setSearchBracelet] = useState("");
+  const [searchBeads, setSearchBeads] = useState("");
 
   const malaTable = useReactTable({
     data: users,
@@ -169,12 +172,36 @@ export default function Categories() {
     },
   });
 
+  const beadsTable = useReactTable({
+    data: users2,
+    columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
+  });
+
   const fetchData = async () => {
     try {
       const data = await getAllCategories();
-      setUsers(data[1]?.subCategories);
-      setUsers1(data[0]?.subCategories);
-      console.log(data[0]);
+      // Find categories by name
+      const malaCategory = data.find((cat: any) => cat.name?.toLowerCase() === "mala");
+      const braceletCategory = data.find((cat: any) => cat.name?.toLowerCase() === "bracelet");
+      const beadsCategory = data.find((cat: any) => cat.name?.toLowerCase() === "beads");
+      
+      setUsers(malaCategory?.subCategories || []);
+      setUsers1(braceletCategory?.subCategories || []);
+      setUsers2(beadsCategory?.subCategories || []);
       setLoading(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to fetch users");
@@ -186,8 +213,10 @@ export default function Categories() {
     try {
       if (category === "Bracelet") {
         await createSubCategory("67cd4f5f31a134d9c96b97db", name);
-      } else {
+      } else if (category === "Mala") {
         await createSubCategory("67cd4fc131a134d9c96b97df", name);
+      } else if (category === "Beads") {
+        await createSubCategoryByName("Beads", name);
       }
 
       window.location.reload();
@@ -213,6 +242,12 @@ export default function Categories() {
     }
   }, [searchBracelet, braceletTable]);
 
+  useEffect(() => {
+    if (searchBeads) {
+      beadsTable.getColumn("name")?.setFilterValue(searchBeads);
+    }
+  }, [searchBeads, beadsTable]);
+
   if (loading) return <Loader />;
   if (error) return (
     <div className="flex items-center justify-center h-screen bg-red-50 text-red-500">
@@ -226,7 +261,7 @@ export default function Categories() {
   return (
     <div className="w-full bg-gray-50 p-6 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Mala Categories Section */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="bg-primaryColor/90 p-4">
@@ -474,6 +509,133 @@ export default function Categories() {
                   size="sm"
                   onClick={() => braceletTable.nextPage()}
                   disabled={!braceletTable.getCanNextPage()}
+                  className="border-gray-300"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Beads Categories Section */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="bg-primaryColor/90 p-4">
+              <h2 className="text-xl font-semibold text-white">Beads Categories</h2>
+            </div>
+            
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className="relative w-64">
+                  <HiOutlineSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <Input
+                    placeholder="Search categories..."
+                    value={searchBeads}
+                    onChange={(e) => setSearchBeads(e.target.value)}
+                    className="pl-10 py-2"
+                  />
+                </div>
+                
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="bg-primaryColor hover:bg-primaryColor/90 text-white">
+                      <FaPlus className="mr-2 h-4 w-4" />
+                      Add Category
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px] bg-white">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-semibold">Add New Beads Category</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="beads-name" className="text-right font-medium">
+                          Category Name
+                        </Label>
+                        <Input
+                          id="beads-name"
+                          placeholder="Enter category name"
+                          onChange={(e) => setName(e.target.value)}
+                          className="col-span-3"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        onClick={() => handleAddCategory("Beads")}
+                        className="bg-primaryColor hover:bg-primaryColor/90"
+                      >
+                        Save Category
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              <div className="rounded-md border border-gray-200">
+                <Table>
+                  <TableHeader>
+                    {beadsTable.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id} className="bg-gray-50">
+                        {headerGroup.headers.map((header) => (
+                          <TableHead className="text-center font-semibold" key={header.id}>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {beadsTable.getRowModel().rows?.length ? (
+                      beadsTable.getRowModel().rows.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          data-state={row.getIsSelected() && "selected"}
+                          className="hover:bg-gray-50"
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id} className="text-center">
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={columns.length}
+                          className="h-24 text-center text-gray-500"
+                        >
+                          No categories found.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              <div className="flex items-center justify-end space-x-2 py-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => beadsTable.previousPage()}
+                  disabled={!beadsTable.getCanPreviousPage()}
+                  className="border-gray-300"
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => beadsTable.nextPage()}
+                  disabled={!beadsTable.getCanNextPage()}
                   className="border-gray-300"
                 >
                   Next

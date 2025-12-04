@@ -81,6 +81,11 @@ export function Sidebar({ children }:ContainerProps) {
       title:"Events",
       url:"/event",
       icon:Calendar 
+    },
+    {
+      title:"Product Reviews",
+      url:"/product-reviews",
+      icon:MessageCircle
     }
   ];
 
