@@ -17,6 +17,7 @@ export async function middleware(request: NextRequest) {
     "/review",
     "/services",
     "/user",
+    "/product-reviews",
   ]; // Add your protected routes here
 
   // Check if the current route is protected
@@ -42,5 +43,6 @@ export const config = {
     "/review:path*",
     "/services:path*",
     "/user:path*",
+    "/product-reviews:path*",
   ], // Add your protected routes here
 };

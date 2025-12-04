@@ -2,6 +2,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { usePathname } from "next/navigation";
+import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 import { Container } from "@/HOC/Container";
 import { Sidebar } from "@/component/Sidebar";
@@ -30,16 +31,18 @@ export default function RootLayout({
         suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Toaster />
-        {isLoginPage ? (
-          <main>{children}</main>
-        ) : (
-          <Sidebar>
-            <Container>
-              {children}
-            </Container>
-          </Sidebar>
-        )}
+        <SessionProvider>
+          <Toaster />
+          {isLoginPage ? (
+            <main>{children}</main>
+          ) : (
+            <Sidebar>
+              <Container>
+                {children}
+              </Container>
+            </Sidebar>
+          )}
+        </SessionProvider>
       </body>
     </html>
   );
