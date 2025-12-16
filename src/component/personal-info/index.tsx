@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { FaEdit, FaSave, FaTrash, FaPlus } from "react-icons/fa";
 import { 
   getPersonalInfo, 
-  updateFonePayQR, 
+  updateFonePayQR,
+  updateEsewaQR,
+  updateKhaltiQR,
   addBankQR, 
   updateBankQR, 
   deleteBankQR,
@@ -24,12 +26,24 @@ export default function PersonalInfoManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditingFonePay, setIsEditingFonePay] = useState(false);
+  const [isEditingEsewa, setIsEditingEsewa] = useState(false);
+  const [isEditingKhalti, setIsEditingKhalti] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // FonePay QR state
   const [fonepayQRFile, setFonepayQRFile] = useState<File | null>(null);
   const [fonepayQRPreview, setFonepayQRPreview] = useState<string | null>(null);
   const fonepayQRInputRef = useRef<HTMLInputElement>(null);
+
+  // eSewa QR state
+  const [esewaQRFile, setEsewaQRFile] = useState<File | null>(null);
+  const [esewaQRPreview, setEsewaQRPreview] = useState<string | null>(null);
+  const esewaQRInputRef = useRef<HTMLInputElement>(null);
+
+  // Khalti QR state
+  const [khaltiQRFile, setKhaltiQRFile] = useState<File | null>(null);
+  const [khaltiQRPreview, setKhaltiQRPreview] = useState<string | null>(null);
+  const khaltiQRInputRef = useRef<HTMLInputElement>(null);
 
   // Bank QR states
   const [editingBankIndex, setEditingBankIndex] = useState<number | null>(null);
@@ -52,6 +66,12 @@ export default function PersonalInfoManagement() {
         setPersonalInfo(data);
         if (data.fonepayQR?.qrCodeUrl) {
           setFonepayQRPreview(data.fonepayQR.qrCodeUrl);
+        }
+        if (data.esewaQR?.qrCodeUrl) {
+          setEsewaQRPreview(data.esewaQR.qrCodeUrl);
+        }
+        if (data.khaltiQR?.qrCodeUrl) {
+          setKhaltiQRPreview(data.khaltiQR.qrCodeUrl);
         }
         
         // Initialize bank QR forms
@@ -132,6 +152,104 @@ export default function PersonalInfoManagement() {
       setFonepayQRPreview(null);
     }
     setIsEditingFonePay(false);
+  };
+
+  // eSewa QR handlers
+  const handleEsewaQRChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEsewaQRFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEsewaQRPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveEsewaQR = async () => {
+    if (!esewaQRFile && !personalInfo?.esewaQR) {
+      toast.error("Please select a QR code image");
+      return;
+    }
+
+    if (!esewaQRFile) {
+      setIsEditingEsewa(false);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await updateEsewaQR(esewaQRFile);
+      toast.success("eSewa QR updated successfully");
+      setIsEditingEsewa(false);
+      setEsewaQRFile(null);
+      await fetchPersonalInfo();
+    } catch (err: any) {
+      console.error("Error updating eSewa QR:", err);
+      toast.error(err?.message || "Failed to update eSewa QR");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelEsewaQR = () => {
+    setEsewaQRFile(null);
+    if (personalInfo?.esewaQR?.qrCodeUrl) {
+      setEsewaQRPreview(personalInfo.esewaQR.qrCodeUrl);
+    } else {
+      setEsewaQRPreview(null);
+    }
+    setIsEditingEsewa(false);
+  };
+
+  // Khalti QR handlers
+  const handleKhaltiQRChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setKhaltiQRFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setKhaltiQRPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveKhaltiQR = async () => {
+    if (!khaltiQRFile && !personalInfo?.khaltiQR) {
+      toast.error("Please select a QR code image");
+      return;
+    }
+
+    if (!khaltiQRFile) {
+      setIsEditingKhalti(false);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await updateKhaltiQR(khaltiQRFile);
+      toast.success("Khalti QR updated successfully");
+      setIsEditingKhalti(false);
+      setKhaltiQRFile(null);
+      await fetchPersonalInfo();
+    } catch (err: any) {
+      console.error("Error updating Khalti QR:", err);
+      toast.error(err?.message || "Failed to update Khalti QR");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelKhaltiQR = () => {
+    setKhaltiQRFile(null);
+    if (personalInfo?.khaltiQR?.qrCodeUrl) {
+      setKhaltiQRPreview(personalInfo.khaltiQR.qrCodeUrl);
+    } else {
+      setKhaltiQRPreview(null);
+    }
+    setIsEditingKhalti(false);
   };
 
   const handleAddBankQR = () => {
@@ -360,6 +478,170 @@ export default function PersonalInfoManagement() {
                 </div>
               ) : (
                 <p className="text-gray-500">No FonePay QR code added yet</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* eSewa QR Section */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">eSewa QR</h2>
+            {!isEditingEsewa && (
+              <Button
+                onClick={() => setIsEditingEsewa(true)}
+                className="bg-primaryColor hover:bg-primaryColor/90 text-white"
+              >
+                <FaEdit className="mr-2 h-4 w-4" />
+                {personalInfo?.esewaQR ? "Edit" : "Add"}
+              </Button>
+            )}
+          </div>
+
+          {isEditingEsewa ? (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="esewaQR" className="text-sm font-medium text-gray-700">
+                  QR Code Image
+                </Label>
+                <Input
+                  ref={esewaQRInputRef}
+                  id="esewaQR"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleEsewaQRChange}
+                  className="mt-2"
+                />
+              </div>
+              {esewaQRPreview && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-600 mb-2">Preview:</p>
+                  <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden">
+                    <Image
+                      src={esewaQRPreview}
+                      alt="eSewa QR Preview"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={handleCancelEsewaQR}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveEsewaQR}
+                  className="bg-primaryColor hover:bg-primaryColor/90 text-white"
+                  disabled={isSubmitting}
+                >
+                  <FaSave className="mr-2 h-4 w-4" />
+                  {isSubmitting ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {esewaQRPreview ? (
+                <div className="space-y-2">
+                  <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden">
+                    <Image
+                      src={esewaQRPreview}
+                      alt="eSewa QR Code"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600 italic">For Nepali clients</p>
+                </div>
+              ) : (
+                <p className="text-gray-500">No eSewa QR code added yet</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Khalti QR Section */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Khalti QR</h2>
+            {!isEditingKhalti && (
+              <Button
+                onClick={() => setIsEditingKhalti(true)}
+                className="bg-primaryColor hover:bg-primaryColor/90 text-white"
+              >
+                <FaEdit className="mr-2 h-4 w-4" />
+                {personalInfo?.khaltiQR ? "Edit" : "Add"}
+              </Button>
+            )}
+          </div>
+
+          {isEditingKhalti ? (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="khaltiQR" className="text-sm font-medium text-gray-700">
+                  QR Code Image
+                </Label>
+                <Input
+                  ref={khaltiQRInputRef}
+                  id="khaltiQR"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleKhaltiQRChange}
+                  className="mt-2"
+                />
+              </div>
+              {khaltiQRPreview && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-600 mb-2">Preview:</p>
+                  <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden">
+                    <Image
+                      src={khaltiQRPreview}
+                      alt="Khalti QR Preview"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={handleCancelKhaltiQR}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveKhaltiQR}
+                  className="bg-primaryColor hover:bg-primaryColor/90 text-white"
+                  disabled={isSubmitting}
+                >
+                  <FaSave className="mr-2 h-4 w-4" />
+                  {isSubmitting ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {khaltiQRPreview ? (
+                <div className="space-y-2">
+                  <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden">
+                    <Image
+                      src={khaltiQRPreview}
+                      alt="Khalti QR Code"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600 italic">For Nepali clients</p>
+                </div>
+              ) : (
+                <p className="text-gray-500">No Khalti QR code added yet</p>
               )}
             </div>
           )}
