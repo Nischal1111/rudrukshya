@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { getAllProduct } from "@/services/product"
 import { getAllCategories } from "@/services/categories"
@@ -68,6 +69,7 @@ interface Product {
 interface Event {
   _id?: string
   title: string
+  description?: string
   bannerPopUpImage?: string
   bannerImage?: string[]
   products?: any[]
@@ -94,8 +96,8 @@ export default function EventManagement() {
   const [openEditDialog, setOpenEditDialog] = useState<string | null>(null)
   const [openProductDialog, setOpenProductDialog] = useState<string | null>(null)
   const [openRemoveProductDialog, setOpenRemoveProductDialog] = useState<string | null>(null)
-  const [eventForm, setEventForm] = useState<{ title: string }>({ title: "" })
-  const [editForm, setEditForm] = useState<{ title: string }>({ title: "" })
+  const [eventForm, setEventForm] = useState<{ title: string; description: string }>({ title: "", description: "" })
+  const [editForm, setEditForm] = useState<{ title: string; description: string }>({ title: "", description: "" })
   const [bannerPopUpImage, setBannerPopUpImage] = useState<File | null>(null)
   const [bannerPopUpImagePreview, setBannerPopUpImagePreview] = useState<string>("")
   const [bannerImages, setBannerImages] = useState<File[]>([])
@@ -375,13 +377,14 @@ export default function EventManagement() {
     try {
       const formData = new FormData()
       formData.append("title", eventForm.title)
+      formData.append("description", eventForm.description || "")
       formData.append("bannerPopUpImage", bannerPopUpImage)
       bannerImages.forEach((img) => {
         formData.append("bannerImage", img)
       })
 
       await createEvent(formData)
-      setEventForm({ title: "" })
+      setEventForm({ title: "", description: "" })
       setBannerPopUpImage(null)
       setBannerPopUpImagePreview("")
       setBannerImages([])
@@ -408,6 +411,7 @@ export default function EventManagement() {
     try {
       const formData = new FormData()
       formData.append("title", editForm.title)
+      formData.append("description", editForm.description || "")
       
       if (bannerPopUpImage) {
         formData.append("bannerPopUpImage", bannerPopUpImage)
@@ -420,7 +424,7 @@ export default function EventManagement() {
       }
 
       await updateEvent(eventId, formData)
-      setEditForm({ title: "" })
+      setEditForm({ title: "", description: "" })
       setBannerPopUpImage(null)
       setBannerPopUpImagePreview("")
       setBannerImages([])
@@ -442,7 +446,8 @@ export default function EventManagement() {
       const response = await getEventById(eventId)
       const event = response?.data || response
       setEditForm({
-        title: event.title || ""
+        title: event.title || "",
+        description: event.description || ""
       })
       if (event.bannerPopUpImage) {
         setBannerPopUpImagePreview(event.bannerPopUpImage)
@@ -578,6 +583,18 @@ export default function EventManagement() {
                   onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Event Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Enter event description"
+                  value={eventForm.description}
+                  onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
               
               <div className="space-y-2">
                 <Label htmlFor="bannerPopUpImage">Banner Popup Image *</Label>
@@ -644,7 +661,7 @@ export default function EventManagement() {
                 disabled={isSubmitting}
                 onClick={() => {
                   setOpenEventDialog(false)
-                  setEventForm({ title: "" })
+                  setEventForm({ title: "", description: "" })
                   setBannerPopUpImage(null)
                   setBannerPopUpImagePreview("")
                   setBannerImages([])
@@ -702,6 +719,13 @@ export default function EventManagement() {
                       <div className="flex items-center gap-2 mb-4">
                 <h2 className="text-2xl font-semibold">{event.title}</h2>
                       </div>
+                      
+                      {event.description && (
+                        <div className="mb-4">
+                          <Label className="text-xs text-muted-foreground mb-2 block">Description:</Label>
+                          <p className="text-sm text-gray-700 leading-relaxed">{event.description}</p>
+                        </div>
+                      )}
                       
                 {event.bannerPopUpImage && (
                         <div className="mt-2 mb-4">
@@ -884,7 +908,7 @@ export default function EventManagement() {
                         onOpenChange={(open) => {
                           if (!open) {
                             setOpenEditDialog(null)
-                            setEditForm({ title: "" })
+                            setEditForm({ title: "", description: "" })
                             setBannerPopUpImage(null)
                             setBannerPopUpImagePreview("")
                             setBannerImages([])
@@ -906,6 +930,18 @@ export default function EventManagement() {
                                 placeholder="Enter event title"
                                 value={editForm.title}
                                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-description">Event Description</Label>
+                              <Textarea
+                                id="edit-description"
+                                placeholder="Enter event description"
+                                value={editForm.description}
+                                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                                rows={4}
+                                className="resize-none"
                               />
                             </div>
                             
@@ -976,7 +1012,7 @@ export default function EventManagement() {
                               disabled={isSubmitting}
                               onClick={() => {
                                 setOpenEditDialog(null)
-                                setEditForm({ title: "" })
+                                setEditForm({ title: "", description: "" })
                                 setBannerPopUpImage(null)
                                 setBannerPopUpImagePreview("")
                                 setBannerImages([])
