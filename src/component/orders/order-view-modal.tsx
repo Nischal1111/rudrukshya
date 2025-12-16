@@ -1,8 +1,9 @@
 "use client"
 
-import { X } from "lucide-react"
+import { X, ZoomIn } from "lucide-react"
 import { format } from "date-fns"
 import Image from "next/image"
+import { useState } from "react"
 
 interface OrderViewModalProps {
   open: boolean
@@ -11,7 +12,15 @@ interface OrderViewModalProps {
 }
 
 export default function OrderViewModal({ open, onOpenChange, order }: OrderViewModalProps) {
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null)
+
   if (!order) return null
+
+  const handleImageClick = (imageUrl: string) => {
+    setLightboxImage(imageUrl)
+    setLightboxOpen(true)
+  }
 
   return (
     <>
@@ -79,7 +88,7 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
                 <div>
                   <p className="text-muted-foreground">Total Amount</p>
                   <p className="font-medium text-lg text-primary">
-                    ${order.totalAmout?.toFixed(2) || "0.00"}
+                    ${order.totalAmout != null ? (order.totalAmout / 100).toFixed(2) : "0.00"}
                   </p>
                 </div>
                 {order.promocode && (
@@ -90,6 +99,30 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
                 )}
               </div>
             </div>
+
+            {/* Payment Verification Image */}
+            {order.paymentVerificationImage && (
+              <div>
+                <h3 className="font-semibold text-foreground mb-3">Payment Verification</h3>
+                <div className="relative group">
+                  <div 
+                    className="relative w-full max-w-md h-64 border-2 border-border rounded-lg overflow-hidden cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => handleImageClick(order.paymentVerificationImage)}
+                  >
+                    <Image
+                      src={order.paymentVerificationImage}
+                      alt="Payment verification"
+                      fill
+                      className="object-contain"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">Click image to view in full size</p>
+                </div>
+              </div>
+            )}
 
             {/* Products */}
             {order.products && order.products.length > 0 && (
@@ -144,6 +177,38 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxOpen && lightboxImage && (
+        <div 
+          className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => {
+            setLightboxOpen(false)
+            setLightboxImage(null)
+          }}
+        >
+          <div className="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center">
+            <button
+              onClick={() => {
+                setLightboxOpen(false)
+                setLightboxImage(null)
+              }}
+              className="absolute top-4 right-4 z-10 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full p-2"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <div className="relative w-full h-full max-w-5xl max-h-[90vh]">
+              <Image
+                src={lightboxImage}
+                alt="Payment verification - Full size"
+                fill
+                className="object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
             </div>
           </div>
         </div>

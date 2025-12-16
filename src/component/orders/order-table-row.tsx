@@ -2,7 +2,7 @@
 
 import { TableCell, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Eye, Edit2, Trash2 } from "lucide-react"
+import { Eye, Edit2, Trash2, Image as ImageIcon } from "lucide-react"
 import { Badge } from "@/component/ui/badge"
 import { format } from "date-fns"
 
@@ -40,7 +40,7 @@ export default function OrderTableRow({ order, onView, onEdit, onDelete }: Order
       <TableCell>{order?.fullname}</TableCell>
       <TableCell>{order?.email}</TableCell>
       <TableCell>{order?.phone}</TableCell>
-      <TableCell>${order?.totalAmout?.toFixed(2) || "0.00"}</TableCell>
+      <TableCell>${order?.totalAmout != null ? (order.totalAmout / 100).toFixed(2) : "0.00"}</TableCell>
       <TableCell>
         <Badge className={`${orderStatusBadge.bg} ${orderStatusBadge.text}`}>
           {order?.orderStatus}
@@ -51,7 +51,16 @@ export default function OrderTableRow({ order, onView, onEdit, onDelete }: Order
           {order?.paymentStatus}
         </Badge>
       </TableCell>
-      <TableCell>{order?.paymentMethod || "-"}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          {order?.paymentMethod || "-"}
+          {order?.paymentVerificationImage && (
+            <span title="Payment verification image available" className="inline-flex">
+              <ImageIcon className="h-4 w-4 text-green-600" aria-hidden="true" />
+            </span>
+          )}
+        </div>
+      </TableCell>
       <TableCell>{format(new Date(order?.createdAt), "MMM dd, yyyy")}</TableCell>
       <TableCell className="text-right">
         <div className="flex gap-2 justify-end">
