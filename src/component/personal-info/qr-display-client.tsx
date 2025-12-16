@@ -53,6 +53,42 @@ export default function QRDisplayClient() {
 
   return (
     <div className="space-y-6">
+      {/* eSewa QR Section */}
+      {personalInfo.esewaQR?.qrCodeUrl && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold text-gray-900">eSewa Payment</h3>
+          <div className="flex flex-col items-center space-y-2">
+            <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden bg-white p-2">
+              <Image
+                src={personalInfo.esewaQR.qrCodeUrl}
+                alt="eSewa QR Code"
+                fill
+                className="object-contain"
+              />
+            </div>
+            <p className="text-sm text-gray-600 italic">For Nepali clients</p>
+          </div>
+        </div>
+      )}
+
+      {/* Khalti QR Section */}
+      {personalInfo.khaltiQR?.qrCodeUrl && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold text-gray-900">Khalti Payment</h3>
+          <div className="flex flex-col items-center space-y-2">
+            <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden bg-white p-2">
+              <Image
+                src={personalInfo.khaltiQR.qrCodeUrl}
+                alt="Khalti QR Code"
+                fill
+                className="object-contain"
+              />
+            </div>
+            <p className="text-sm text-gray-600 italic">For Nepali clients</p>
+          </div>
+        </div>
+      )}
+
       {/* FonePay QR Section */}
       {personalInfo.fonepayQR?.qrCodeUrl && (
         <div className="space-y-3">

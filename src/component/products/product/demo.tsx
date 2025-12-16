@@ -160,6 +160,7 @@ const Demo: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isDragging, setIsDragging] = useState<boolean>(false)
   const [editingDiscountIndex, setEditingDiscountIndex] = useState<number | null>(null)
+  const [editingSizeIndex, setEditingSizeIndex] = useState<number | null>(null)
 
   // Watch the image field to handle the selected images
   const watchImages = watch("img", [])
@@ -349,21 +350,56 @@ const handleRemoveDiscount = (index: number) => {
       // Ensure "mm" is included in the size value
       const sizeMm = newSizeMm.trim()
       const sizeWithUnit = sizeMm.toLowerCase().includes('mm') ? sizeMm : `${sizeMm} mm`
-      const newSizes = [...sizes, { 
-        name: newSizeName.trim(), 
-        price: newSizePrice ? Number(newSizePrice): null, 
-        size: newSizeMm?sizeWithUnit: ""
-      }]
-      setSizes(newSizes)
+      
+      if (editingSizeIndex !== null) {
+        // Update existing size
+        const newSizes = [...sizes]
+        newSizes[editingSizeIndex] = { 
+          name: newSizeName.trim(), 
+          price: newSizePrice ? Number(newSizePrice): null, 
+          size: newSizeMm?sizeWithUnit: ""
+        }
+        setSizes(newSizes)
+        setEditingSizeIndex(null)
+      } else {
+        // Add new size
+        const newSizes = [...sizes, { 
+          name: newSizeName.trim(), 
+          price: newSizePrice ? Number(newSizePrice): null, 
+          size: newSizeMm?sizeWithUnit: ""
+        }]
+        setSizes(newSizes)
+      }
       setNewSizeName("")
       setNewSizePrice("")
       setNewSizeMm("")
     }
   }
 
+  const handleEditSize = (index: number) => {
+    setEditingSizeIndex(index)
+    setNewSizeName(sizes[index].name || "")
+    setNewSizePrice(sizes[index].price ? String(sizes[index].price) : "")
+    setNewSizeMm(sizes[index].size || "")
+  }
+
+  const handleCancelEditSize = () => {
+    setEditingSizeIndex(null)
+    setNewSizeName("")
+    setNewSizePrice("")
+    setNewSizeMm("")
+  }
+
   const handleRemoveSize = (index: number) => {
     const newSizes = sizes.filter((_, i) => i !== index)
     setSizes(newSizes)
+    // If we were editing this size, cancel the edit
+    if (editingSizeIndex === index) {
+      setEditingSizeIndex(null)
+      setNewSizeName("")
+      setNewSizePrice("")
+      setNewSizeMm("")
+    }
   }
 
   const fetchVariants = async (): Promise<void> => {
@@ -1132,7 +1168,7 @@ const handleRemoveDiscount = (index: number) => {
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <input
                       type="text"
                       placeholder="Title"
@@ -1157,14 +1193,25 @@ const handleRemoveDiscount = (index: number) => {
                       onChange={(e) => setNewSizeMm(e.target.value)}
                       className="bg-gray-50 h-12 px-4 flex-1 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
                     />
-                    <Button
-                      type="button"
-                      onClick={handleAddSize}
-                      className="bg-primaryColor text-white h-12 px-4 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium flex items-center gap-2"
-                    >
-                      <CiCirclePlus size={20} />
-                      Add
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        onClick={handleAddSize}
+                        className="bg-primaryColor text-white h-12 px-4 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium flex items-center gap-2"
+                      >
+                        <CiCirclePlus size={20} />
+                        {editingSizeIndex !== null ? "Update" : "Add"}
+                      </Button>
+                      {editingSizeIndex !== null && (
+                        <Button
+                          type="button"
+                          onClick={handleCancelEditSize}
+                          className="bg-gray-500 text-white h-12 px-4 rounded-xl hover:bg-gray-600 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {sizes.length > 0 ? (
@@ -1172,7 +1219,9 @@ const handleRemoveDiscount = (index: number) => {
                       {sizes.map((size, index) => (
                         <div
                           key={index}
-                          className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl flex justify-between items-center border border-gray-200 transition-all duration-200 hover:shadow-md"
+                          className={`bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl flex justify-between items-center border-2 transition-all duration-200 hover:shadow-md ${
+                            editingSizeIndex === index ? "border-primaryColor bg-primaryColor/5" : "border-gray-200"
+                          }`}
                         >
                           <div className="flex items-center gap-3">
                             <div className="bg-primaryColor/10 text-primaryColor px-3 py-1 rounded-lg font-semibold text-sm">
@@ -1181,13 +1230,23 @@ const handleRemoveDiscount = (index: number) => {
                             <span className="font-medium text-gray-700">{size.price?`$${size.price}`:""}</span>
                             <span className="font-medium text-gray-600">{size.size}</span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSize(index)}
-                            className="hover:scale-110 transition-transform"
-                          >
-                            <IoCloseCircle className="text-red-500" size={24} />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleEditSize(index)}
+                              className="hover:scale-110 transition-transform bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium"
+                              disabled={editingSizeIndex !== null && editingSizeIndex !== index}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSize(index)}
+                              className="hover:scale-110 transition-transform"
+                            >
+                              <IoCloseCircle className="text-red-500" size={24} />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>

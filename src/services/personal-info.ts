@@ -16,6 +16,18 @@ export interface FonePayQR {
   qrCodeUrl?: string;
 }
 
+export interface EsewaQR {
+  _id?: string;
+  qrCode?: string;
+  qrCodeUrl?: string;
+}
+
+export interface KhaltiQR {
+  _id?: string;
+  qrCode?: string;
+  qrCodeUrl?: string;
+}
+
 export interface ShippingFees {
   insideKathmandu?: number;
   outsideKathmandu?: number;
@@ -26,6 +38,8 @@ export interface ShippingFees {
 export interface PersonalInfo {
   _id?: string;
   fonepayQR?: FonePayQR;
+  esewaQR?: EsewaQR;
+  khaltiQR?: KhaltiQR;
   bankQRs?: BankQR[];
   shippingFees?: ShippingFees;
 }
@@ -204,6 +218,66 @@ export const deleteBankQR = async (id: string) => {
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       throw new Error(err.message);
+    } else {
+      throw new Error("An unexpected error occurred");
+    }
+  }
+};
+
+// Update eSewa QR
+export const updateEsewaQR = async (qrCode: File) => {
+  try {
+    const formData = new FormData();
+    formData.append("esewaQR", qrCode);
+
+    const res = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/esewa-qr`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return res.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      console.error("eSewa QR update error:", err.response?.data);
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error || 
+                          err.message || 
+                          "Failed to update eSewa QR";
+      throw new Error(errorMessage);
+    } else {
+      throw new Error("An unexpected error occurred");
+    }
+  }
+};
+
+// Update Khalti QR
+export const updateKhaltiQR = async (qrCode: File) => {
+  try {
+    const formData = new FormData();
+    formData.append("khaltiQR", qrCode);
+
+    const res = await axios.post(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/khalti-qr`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return res.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      console.error("Khalti QR update error:", err.response?.data);
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error || 
+                          err.message || 
+                          "Failed to update Khalti QR";
+      throw new Error(errorMessage);
     } else {
       throw new Error("An unexpected error occurred");
     }
