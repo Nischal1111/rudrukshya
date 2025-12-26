@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useSession } from "next-auth/react"
 import { X, ChevronDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { updateOrderStatus, updatePaymentStatus } from "@/services/order"
 
 interface OrderEditModalProps {
   open: boolean
@@ -20,6 +22,8 @@ export default function OrderEditModal({ open, onOpenChange, order, onSuccess }:
   const [orderStatusOpen, setOrderStatusOpen] = useState(false)
   const [paymentStatusOpen, setPaymentStatusOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
 
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -54,19 +58,11 @@ export default function OrderEditModal({ open, onOpenChange, order, onSuccess }:
       }
 
       if (updates.orderStatus) {
-        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/order/${order._id}/status`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderStatus: updates.orderStatus }),
-        })
+        await updateOrderStatus(order._id, updates.orderStatus, token)
       }
 
       if (updates.paymentStatus) {
-        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/order/${order._id}/payment`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paymentStatus: updates.paymentStatus }),
-        })
+        await updatePaymentStatus(order._id, updates.paymentStatus, token)
       }
 
       toast.success("Order updated successfully")

@@ -1,9 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/component/ui/card"
 import PromoCodeItem from "./promo-code-item"
+import { listPromocodes } from "@/services/promocode"
 
 interface PromoCode {
   _id: string
@@ -22,6 +24,8 @@ interface PromoCodeListProps {
 export default function PromoCodeList({ refresh, onRefresh }: PromoCodeListProps) {
   const [promocodes, setPromocodes] = useState<PromoCode[]>([])
   const [loading, setLoading] = useState(true)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
 
   useEffect(() => {
     fetchPromocodes()
@@ -30,13 +34,7 @@ export default function PromoCodeList({ refresh, onRefresh }: PromoCodeListProps
   const fetchPromocodes = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/promocode/list`)
-      const data = await response.json()
-
-      if (!response.ok) {
-        toast.error(data.message || "Failed to fetch promocodes")
-        return
-      }
+      const data = await listPromocodes(token)
       console.log(data.promos)
       setPromocodes(data.promos || [])
     } catch (error) {

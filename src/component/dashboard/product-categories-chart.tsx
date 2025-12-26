@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/component/ui/card"
+import { getDashboardStats } from "@/services/dashboard"
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
 interface CategoryData {
@@ -21,12 +23,13 @@ const COLORS = [
 export function ProductCategoriesChart() {
   const [data, setData] = useState<CategoryData[]>([])
   const [loading, setLoading] = useState(true)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/stats`)
-        const result = await response.json()
+        const result = await getDashboardStats(token)
         setData(result.charts.productCategories)
       } catch (error) {
         console.error("Failed to fetch categories:", error)

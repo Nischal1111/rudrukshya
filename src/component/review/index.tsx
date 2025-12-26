@@ -1,11 +1,12 @@
-"use client";
-import { deleteReview, getReview } from "@/services/review";
-import React, { useEffect, useState } from "react";
-import { FaStar } from "react-icons/fa";
-import { MdClose } from "react-icons/md";
-import { BiChevronLeft, BiChevronRight } from "react-icons/bi";
-import { FiCalendar } from "react-icons/fi";
-import { Button } from "@/components/ui/button";
+"use client"
+import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
+import { MdClose } from "react-icons/md"
+import { FaStar } from "react-icons/fa"
+import { FiCalendar } from "react-icons/fi"
+import { BiChevronLeft, BiChevronRight } from "react-icons/bi"
+import { Avatar } from "@heroui/avatar"
+import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,74 +17,56 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Avatar } from '@heroui/avatar';
-import Loader from "../Loader";
+} from "@/components/ui/alert-dialog"
+import { getReview, deleteReview } from "@/services/review"
+import Loader from "../Loader"
+import { toast } from "sonner"
 
-interface Review {
-  _id: string;
-  userID: {
-    fullName: string;
-    _id: string;
-  };
-  comment: string;
-  commentTitle: string;
-  createdAt: string;
-  updatedAt: string;
-  rating: number;
-}
+export default function Review() {
+  const [reviews, setReviews] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
+  const [previousDisable, setPreviousDisable] = useState(true)
+  const [nextDisable, setNextDisable] = useState(true)
 
-const Review = () => {
-  const [reviews, setReviews] = useState<Array<Review>>([]);
-  const [nextDisable, setNextDisable] = useState(false);
-  const [previousDisable, setPreviousDisable] = useState(true);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-
-  const fetchData = async (page: number, limit: number) => {
+  const fetchData = async (pageNum: number, limit: number) => {
     try {
-      setLoading(true);
-      const data = await getReview(page, limit);
-      
-      setPage(data.currentPage);
-      if (data.currentPage === data.totalPages) {
-        setNextDisable(true);
-      } else {
-        setNextDisable(false);
-      }
-      
-      if (data.currentPage === 1) {
-        setPreviousDisable(true);
-      } else {
-        setPreviousDisable(false);
-      }
-      
-      setReviews(data?.reviews);
-      setLoading(false);
-    } catch (err: unknown) {
-      console.log(err);
-      setLoading(false);
+      setLoading(true)
+      const data = await getReview(pageNum, limit, token)
+      setReviews(data.reviews)
+      setTotalPages(data.pagination.totalPages)
+      setPage(data.pagination.currentPage)
+      setPreviousDisable(data.pagination.currentPage === 1)
+      setNextDisable(data.pagination.currentPage === data.pagination.totalPages)
+      setLoading(false)
+    } catch (error) {
+      console.error("Failed to fetch reviews:", error)
+      setLoading(false)
     }
-  };
+  }
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteReview(id);
-      fetchData(page, 12);
+      await deleteReview(id, token)
+      toast.success("Review deleted successfully")
+      fetchData(page, 12)
     } catch (error) {
-      console.log(error);
+      toast.error("Failed to delete review")
     }
-  };
-  
+  }
+
   useEffect(() => {
     fetchData(page, 12);
-  }, []);
+  }, [page, token]);
 
   return (
     <>
-    {loading && (
-      <Loader/>
-    )}
+      {loading && (
+        <Loader />
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {reviews.map((review, index) => {
           const current_date = new Date(review.createdAt);
@@ -92,7 +75,7 @@ const Review = () => {
             month: "short",
             year: "numeric"
           });
-          
+
           return (
             <div
               key={index}
@@ -135,9 +118,9 @@ const Review = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     {[...Array(5)].map((_, i) => (
-                      <FaStar 
-                        key={i} 
-                        className={`h-4 w-4 ${i < review.rating ? "text-yellow-300" : "text-white"}`} 
+                      <FaStar
+                        key={i}
+                        className={`h-4 w-4 ${i < review.rating ? "text-yellow-300" : "text-white"}`}
                       />
                     ))}
                   </div>
@@ -152,11 +135,11 @@ const Review = () => {
                 <div className="flex items-center mb-4">
                   <div className="overflow-hidden mr-3">
                     <Avatar
-                                            color='warning'
-                                            as="button"
-                                            size="md"
-                                            src={`https://ui-avatars.com/api/?name=${review?.userID?.fullName}&background=E4C087&color=ffff`}
-                                        />
+                      color='warning'
+                      as="button"
+                      size="md"
+                      src={`https://ui-avatars.com/api/?name=${review?.userID?.fullName}&background=E4C087&color=ffff`}
+                    />
                   </div>
                   <div>
                     <h3 className="font-medium text-gray-900">{review.userID?.fullName}</h3>
@@ -181,7 +164,7 @@ const Review = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => fetchData(page - 1, 12)}
+          onClick={() => setPage(p => Math.max(1, p - 1))}
           disabled={previousDisable}
           className="flex items-center gap-1"
         >
@@ -194,7 +177,7 @@ const Review = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => fetchData(page + 1, 12)}
+          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
           disabled={nextDisable}
           className="flex items-center gap-1"
         >
@@ -205,5 +188,3 @@ const Review = () => {
     </>
   );
 };
-
-export default Review;

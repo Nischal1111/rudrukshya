@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,19 +28,21 @@ export default function ContactManagement() {
     email: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Refs to access input values directly as fallback
   const locationRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+  const { data: session } = useSession();
+  const token = (session?.user as any)?.jwt || "";
 
   const fetchContact = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getContacts();
+      const data = await getContacts(token);
       const contacts = Array.isArray(data) ? data : [];
-      
+
       if (contacts.length > 0) {
         // Get the first contact
         const firstContact = contacts[0];
@@ -83,7 +86,7 @@ export default function ContactManagement() {
     const locationValue = formData.location || locationRef.current?.value || "";
     const phoneValue = formData.phone || phoneRef.current?.value || "";
     const emailValue = formData.email || emailRef.current?.value || "";
-    
+
     // Ensure all fields are strings and trim them
     const trimmedData = {
       location: String(locationValue).trim(),
@@ -118,12 +121,12 @@ export default function ContactManagement() {
       if (contact?._id) {
         // Update existing contact
         console.log("Updating contact with ID:", contact._id);
-        await updateContact(contact._id, trimmedData);
+        await updateContact(contact._id, trimmedData, token);
         toast.success("Contact updated successfully");
       } else {
         // Create new contact
         console.log("Creating new contact");
-        await createContact(trimmedData);
+        await createContact(trimmedData, token);
         toast.success("Contact created successfully");
       }
       setIsEditing(false);

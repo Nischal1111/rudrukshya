@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,13 +28,15 @@ export default function ShippingInfoManagement() {
     india: 0,
     otherInternational: 0,
   });
+  const { data: session } = useSession();
+  const token = (session?.user as any)?.jwt || "";
 
   const fetchPersonalInfo = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getPersonalInfo();
-      
+
       if (data) {
         setPersonalInfo(data);
         if (data.shippingFees) {
@@ -71,7 +74,7 @@ export default function ShippingInfoManagement() {
   const handleSave = async () => {
     setIsSubmitting(true);
     try {
-      await updateShippingFees(shippingFees);
+      await updateShippingFees(shippingFees, token);
       toast.success("Shipping fees updated successfully");
       await fetchPersonalInfo();
     } catch (err: any) {

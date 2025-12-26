@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -14,6 +15,8 @@ import { toast } from "sonner";
 import NextImage from "next/image";
 import { useRouter } from "next/navigation";
 import Loader from "../Loader";
+import { RichTextEditor } from "../textEditor/text-Editor";
+import { form } from "@heroui/theme";
 
 interface Blog {
   _id?: string;
@@ -261,6 +264,8 @@ export default function BlogForm({ blogId }: BlogFormProps) {
   const [loading, setLoading] = useState(!!blogId);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const editorImageInputRef = useRef<HTMLInputElement>(null);
+  const { data: session } = useSession();
+  const token = (session?.user as any)?.jwt || "";
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -345,34 +350,17 @@ export default function BlogForm({ blogId }: BlogFormProps) {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editor) {
-      toast.error("Editor not initialized");
-      return;
-    }
 
-    const content = editor.getHTML();
-    const textContent = editor.getText().trim();
-    
-    if (!formData.title.trim()) {
-      toast.error("Please fill in title");
-      return;
-    }
-    
-    if (!textContent && !content.includes('<img')) {
-      toast.error("Please add some content");
-      return;
-    }
 
     setIsSubmitting(true);
     try {
       let dataToSend: FormData | { title: string; content: string; author?: string; image?: string; imageUrl?: string };
-      
+
       // If there's an image file, use FormData
       if (imageFile) {
         const formDataToSend = new FormData();
         formDataToSend.append("title", formData.title.trim());
-        formDataToSend.append("content", content);
+        formDataToSend.append("content", formData.content);
         if (formData.author && formData.author.trim()) {
           formDataToSend.append("author", formData.author.trim());
         }
@@ -382,7 +370,7 @@ export default function BlogForm({ blogId }: BlogFormProps) {
         // Otherwise, send as JSON
         const jsonData: { title: string; content: string; author?: string; image?: string; imageUrl?: string } = {
           title: formData.title.trim(),
-          content: content,
+          content: formData.content,
         };
         if (formData.author && formData.author.trim()) {
           jsonData.author = formData.author.trim();
@@ -400,18 +388,18 @@ export default function BlogForm({ blogId }: BlogFormProps) {
       // Debug logging
       console.log("Sending blog data:", {
         title: formData.title,
-        hasContent: !!content,
-        contentLength: content.length,
+        hasContent: !!formData.content,
+        contentLength: formData.content.length,
         hasAuthor: !!formData.author,
         hasImage: !!(imageFile || formData.image),
         dataType: imageFile ? "FormData" : "JSON",
       });
 
       if (blogId) {
-        await updateBlog(blogId, dataToSend);
+        await updateBlog(blogId, dataToSend, token);
         toast.success("Blog updated successfully");
       } else {
-        await createBlog(dataToSend);
+        await createBlog(dataToSend, token);
         toast.success("Blog created successfully");
       }
       router.push("/blog");
@@ -497,22 +485,15 @@ export default function BlogForm({ blogId }: BlogFormProps) {
             <Label htmlFor="content" className="font-medium">
               Content *
             </Label>
-            <div className="space-y-2">
-              <MenuBar editor={editor} onImageUpload={handleEditorImageUpload} />
-              <input
-                ref={editorImageInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleEditorImageFileChange}
-                className="hidden"
-              />
-              <div className="border border-gray-300 rounded-md min-h-[400px] bg-white focus-within:ring-2 focus-within:ring-primaryColor focus-within:border-primaryColor cursor-text">
-                <EditorContent editor={editor} />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Use the toolbar above to format your content. Supports headings, lists, images, links, bold, italic, and more.
-              </p>
-            </div>
+            <RichTextEditor
+              value={formData.content}
+              onChange={(html) => setFormData({
+                ...formData,
+                content: html
+              })}
+              placeholder="Enter event description..."
+              minHeight="300px"
+            />
           </div>
 
           <div className="flex gap-4 justify-end pt-4 border-t">

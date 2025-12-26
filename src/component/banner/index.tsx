@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -99,6 +100,8 @@ export default function BannerManagement() {
   const [youtubeLinks, setYoutubeLinks] = useState<string[]>([]);
   const [youtubeLinkInput, setYoutubeLinkInput] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: session } = useSession();
+  const token = (session?.user as any)?.jwt || "";
 
   const fetchBanner = async (name: string) => {
     try {
@@ -106,7 +109,7 @@ export default function BannerManagement() {
       // Always set the banner, even if empty array is returned
       if (Array.isArray(data)) {
         const validMedia = data.filter((item) => item && item.trim() !== "");
-        
+
         setBanners((prev) => ({
           ...prev,
           [name]: { name, images: validMedia },
@@ -114,7 +117,7 @@ export default function BannerManagement() {
       }
     } catch (err: any) {
       // Handle any errors by initializing empty banner
-        console.error("Error fetching banner:", err);
+      console.error("Error fetching banner:", err);
       setBanners((prev) => ({
         ...prev,
         [name]: { name, images: [] },
@@ -126,7 +129,7 @@ export default function BannerManagement() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Fetch all predefined banners
       await Promise.all(
         BANNER_SECTIONS.map((section) => fetchBanner(section.name))
@@ -210,8 +213,8 @@ export default function BannerManagement() {
 
       if (!isVideo && !isImage) {
         toast.error("Please select an image or video file");
-      return;
-    }
+        return;
+      }
 
       // Check if current banner has media
       if (currentMedia.length > 0) {
@@ -223,11 +226,11 @@ export default function BannerManagement() {
 
       setSelectedFiles([file]);
     }
-    
+
     // Create previews
     const previews: string[] = [];
     const filesToPreview = section.type === "home" ? files.filter(isImageFile) : files;
-    
+
     filesToPreview.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -261,10 +264,10 @@ export default function BannerManagement() {
       // Home: exactly 3 images (files only, no YouTube)
       if (youtubeLinks.length > 0) {
         toast.error("Home page banner does not support YouTube links");
-      return;
-    }
+        return;
+      }
 
-    if (selectedFiles.length === 0) {
+      if (selectedFiles.length === 0) {
         toast.error("Please select 3 image files");
         return;
       }
@@ -285,15 +288,15 @@ export default function BannerManagement() {
     } else {
       // Page: exactly 1 image OR 1 video file OR 1 YouTube link
       const totalMedia = selectedFiles.length + youtubeLinks.length;
-      
+
       if (totalMedia === 0) {
         toast.error(`${section.displayName} must have exactly 1 image, 1 video file, or 1 YouTube link`);
-      return;
-    }
+        return;
+      }
 
       if (totalMedia > 1) {
         toast.error(`${section.displayName} can only have 1 media item`);
-      return;
+        return;
       }
 
       if (selectedFiles.length === 1) {
@@ -312,17 +315,17 @@ export default function BannerManagement() {
         // For home: if selected files = 3, replace all. Otherwise, add to existing.
         if (selectedFiles.length === 3) {
           // Replacing all 3 images
-          await updateBanner(sectionName, selectedFiles);
+          await updateBanner(sectionName, selectedFiles, [], token);
         } else {
           // Adding to existing images (must total exactly 3)
-          await createBanner(sectionName, selectedFiles);
+          await createBanner(sectionName, selectedFiles, [], token);
         }
       } else {
         // For page banners: always replace (since it's always exactly 1)
         if (currentMedia.length > 0) {
-          await updateBanner(sectionName, selectedFiles, youtubeLinks);
+          await updateBanner(sectionName, selectedFiles, youtubeLinks, token);
         } else {
-          await createBanner(sectionName, selectedFiles, youtubeLinks);
+          await createBanner(sectionName, selectedFiles, youtubeLinks, token);
         }
       }
 
@@ -343,7 +346,7 @@ export default function BannerManagement() {
 
   const handleDeleteMedia = async (name: string, mediaUrl: string) => {
     try {
-      await deleteBannerImage(name, mediaUrl);
+      await deleteBannerImage(name, mediaUrl, token);
       toast.success("Media deleted successfully");
       setOpenDeleteDialog(null);
       await fetchBanner(name);
@@ -448,9 +451,8 @@ export default function BannerManagement() {
             return (
               <div
                 key={section.name}
-                className={`bg-white rounded-lg shadow-md overflow-hidden ${
-                  !isValid ? "border-2 border-yellow-300" : ""
-                }`}
+                className={`bg-white rounded-lg shadow-md overflow-hidden ${!isValid ? "border-2 border-yellow-300" : ""
+                  }`}
               >
                 <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                   <div className="flex items-center justify-between">
@@ -624,9 +626,8 @@ export default function BannerManagement() {
                     </div>
                   ) : (
                     <div
-                      className={`grid gap-4 ${
-                        isHome ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 max-w-md"
-                      }`}
+                      className={`grid gap-4 ${isHome ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 max-w-md"
+                        }`}
                     >
                       {media.map((mediaUrl, index) => {
                         const mediaType = getMediaType(mediaUrl);

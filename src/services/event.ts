@@ -9,7 +9,7 @@ export const getAllEvents = async (page: number = 1, limit: number = 1, isActive
     if (isActive !== undefined) {
       params.append("isActive", isActive.toString());
     }
-    
+
     const res = await axios.get(
       `${process.env.NEXT_PUBLIC_BASE_URL}/event/get?${params.toString()}`
     );
@@ -40,7 +40,7 @@ export const getEventById = async (id: string) => {
 };
 
 // Create new event (requires FormData with bannerPopUpImage and bannerImage files)
-export const createEvent = async (data: FormData) => {
+export const createEvent = async (data: FormData, token: string) => {
   try {
     const res = await axios.post(
       `${process.env.NEXT_PUBLIC_BASE_URL}/event/create`,
@@ -48,6 +48,7 @@ export const createEvent = async (data: FormData) => {
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -62,15 +63,17 @@ export const createEvent = async (data: FormData) => {
 };
 
 // Update event (supports FormData for image updates)
-export const updateEvent = async (id: string, data: FormData | any) => {
+export const updateEvent = async (id: string, data: FormData | any, token: string) => {
   try {
-    const config: any = {};
+    const config: any = {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      }
+    };
     if (data instanceof FormData) {
-      config.headers = {
-        "Content-Type": "multipart/form-data",
-      };
+      config.headers["Content-Type"] = "multipart/form-data";
     }
-    
+
     const res = await axios.put(
       `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${id}`,
       data,
@@ -87,10 +90,16 @@ export const updateEvent = async (id: string, data: FormData | any) => {
 };
 
 // Toggle event active status
-export const toggleEventStatus = async (id: string) => {
+export const toggleEventStatus = async (id: string, token: string) => {
   try {
     const res = await axios.patch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${id}/toggle-status`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${id}/toggle-status`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -103,10 +112,15 @@ export const toggleEventStatus = async (id: string) => {
 };
 
 // Delete event
-export const deleteEvent = async (id: string) => {
+export const deleteEvent = async (id: string, token: string) => {
   try {
     const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${id}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -119,11 +133,16 @@ export const deleteEvent = async (id: string) => {
 };
 
 // Add products to event
-export const addProductsToEvent = async (eventId: string, productIds: string[]) => {
+export const addProductsToEvent = async (eventId: string, productIds: string[], token: string) => {
   try {
     const res = await axios.post(
       `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${eventId}/products`,
-      { products: productIds }
+      { products: productIds },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -136,11 +155,14 @@ export const addProductsToEvent = async (eventId: string, productIds: string[]) 
 };
 
 // Remove products from event
-export const removeProductsFromEvent = async (eventId: string, productIds: string[]) => {
+export const removeProductsFromEvent = async (eventId: string, productIds: string[], token: string) => {
   try {
     const res = await axios.delete(
       `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${eventId}/products`,
       {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         data: { products: productIds }
       }
     );

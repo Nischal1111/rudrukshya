@@ -70,7 +70,7 @@ export const createOrUpdatePersonalInfo = async (data: {
     accountHolderName: string;
     qrCode?: File;
   }>;
-}) => {
+}, token: string) => {
   try {
     const formData = new FormData();
 
@@ -95,6 +95,7 @@ export const createOrUpdatePersonalInfo = async (data: {
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -108,7 +109,7 @@ export const createOrUpdatePersonalInfo = async (data: {
   }
 };
 
-export const updateFonePayQR = async (qrCode: File) => {
+export const updateFonePayQR = async (qrCode: File, token: string) => {
   try {
     const formData = new FormData();
     formData.append("fonepayQR", qrCode);
@@ -119,6 +120,7 @@ export const updateFonePayQR = async (qrCode: File) => {
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -126,10 +128,10 @@ export const updateFonePayQR = async (qrCode: File) => {
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       console.error("FonePay QR update error:", err.response?.data);
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          err.message || 
-                          "Failed to update FonePay QR";
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to update FonePay QR";
       throw new Error(errorMessage);
     } else {
       throw new Error("An unexpected error occurred");
@@ -143,7 +145,7 @@ export const addBankQR = async (data: {
   accountHolderName: string;
   swiftCode?: string;
   qrCode?: File;
-}) => {
+}, token: string) => {
   try {
     const formData = new FormData();
     formData.append("bankName", data.bankName);
@@ -162,6 +164,7 @@ export const addBankQR = async (data: {
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -181,7 +184,7 @@ export const updateBankQR = async (id: string, data: {
   accountHolderName?: string;
   swiftCode?: string;
   qrCode?: File;
-}) => {
+}, token: string) => {
   try {
     const formData = new FormData();
     if (data.bankName) formData.append("bankName", data.bankName);
@@ -196,6 +199,7 @@ export const updateBankQR = async (id: string, data: {
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -209,10 +213,15 @@ export const updateBankQR = async (id: string, data: {
   }
 };
 
-export const deleteBankQR = async (id: string) => {
+export const deleteBankQR = async (id: string, token: string) => {
   try {
     const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/bank-qr/${id}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/bank-qr/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -225,7 +234,7 @@ export const deleteBankQR = async (id: string) => {
 };
 
 // Update eSewa QR
-export const updateEsewaQR = async (qrCode: File) => {
+export const updateEsewaQR = async (qrCode: File, token: string) => {
   try {
     const formData = new FormData();
     formData.append("esewaQR", qrCode);
@@ -236,6 +245,7 @@ export const updateEsewaQR = async (qrCode: File) => {
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -243,10 +253,10 @@ export const updateEsewaQR = async (qrCode: File) => {
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       console.error("eSewa QR update error:", err.response?.data);
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          err.message || 
-                          "Failed to update eSewa QR";
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to update eSewa QR";
       throw new Error(errorMessage);
     } else {
       throw new Error("An unexpected error occurred");
@@ -255,7 +265,7 @@ export const updateEsewaQR = async (qrCode: File) => {
 };
 
 // Update Khalti QR
-export const updateKhaltiQR = async (qrCode: File) => {
+export const updateKhaltiQR = async (qrCode: File, token: string) => {
   try {
     const formData = new FormData();
     formData.append("khaltiQR", qrCode);
@@ -266,6 +276,7 @@ export const updateKhaltiQR = async (qrCode: File) => {
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -273,10 +284,10 @@ export const updateKhaltiQR = async (qrCode: File) => {
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       console.error("Khalti QR update error:", err.response?.data);
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          err.message || 
-                          "Failed to update Khalti QR";
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to update Khalti QR";
       throw new Error(errorMessage);
     } else {
       throw new Error("An unexpected error occurred");
@@ -309,19 +320,24 @@ export const updateShippingFees = async (fees: {
   outsideKathmandu: number;
   india: number;
   otherInternational: number;
-}) => {
+}, token: string) => {
   try {
     const res = await axios.put(
       `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/shipping-fees`,
-      fees
+      fees,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
-      const errorMessage = err.response?.data?.error || 
-                          err.response?.data?.message || 
-                          err.message || 
-                          "Failed to update shipping fees";
+      const errorMessage = err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to update shipping fees";
       throw new Error(errorMessage);
     } else {
       throw new Error("An unexpected error occurred");

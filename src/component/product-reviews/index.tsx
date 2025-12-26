@@ -42,7 +42,7 @@ export default function ProductReviews() {
   const fetchData = async (pageNum: number, limit: number) => {
     try {
       setLoading(true)
-      const data = await getAllProduct(pageNum, limit)
+      const data = await getAllProduct(`page=${pageNum}&limit=${limit}`)
       setPage(data.pagination.currentPage)
       setTotalPages(data.pagination.totalPages)
       setProducts(data?.products || [])

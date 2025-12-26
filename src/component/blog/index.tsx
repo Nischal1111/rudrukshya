@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -32,7 +33,7 @@ interface Blog {
   _id?: string;
   title: string;
   content: string;
-  image?: string;
+  thumbnail?: string;
   author?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -45,6 +46,8 @@ export default function BlogManagement() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const { data: session } = useSession();
+  const token = (session?.user as any)?.jwt || "";
 
   const fetchBlogs = async () => {
     try {
@@ -74,7 +77,7 @@ export default function BlogManagement() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteBlog(id);
+      await deleteBlog(id, token);
       toast.success("Blog deleted successfully");
       await fetchBlogs();
     } catch (err: any) {
@@ -138,9 +141,9 @@ export default function BlogManagement() {
                       </TableCell>
                       <TableCell>{blog.author || "N/A"}</TableCell>
                       <TableCell>
-                        {blog.image ? (
+                        {blog.thumbnail ? (
                           <NextImage
-                            src={blog.image}
+                            src={blog.thumbnail}
                             alt={blog.title}
                             width={60}
                             height={60}

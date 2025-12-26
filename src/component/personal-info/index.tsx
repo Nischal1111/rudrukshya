@@ -1,17 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FaEdit, FaSave, FaTrash, FaPlus } from "react-icons/fa";
-import { 
-  getPersonalInfo, 
+import {
+  getPersonalInfo,
   updateFonePayQR,
   updateEsewaQR,
   updateKhaltiQR,
-  addBankQR, 
-  updateBankQR, 
+  addBankQR,
+  updateBankQR,
   deleteBankQR,
   type PersonalInfo,
   type BankQR,
@@ -29,7 +30,7 @@ export default function PersonalInfoManagement() {
   const [isEditingEsewa, setIsEditingEsewa] = useState(false);
   const [isEditingKhalti, setIsEditingKhalti] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // FonePay QR state
   const [fonepayQRFile, setFonepayQRFile] = useState<File | null>(null);
   const [fonepayQRPreview, setFonepayQRPreview] = useState<string | null>(null);
@@ -55,13 +56,15 @@ export default function PersonalInfoManagement() {
     qrCodeFile?: File | null;
     qrCodePreview?: string | null;
   }>>([]);
+  const { data: session } = useSession();
+  const token = (session?.user as any)?.jwt || "";
 
   const fetchPersonalInfo = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getPersonalInfo();
-      
+
       if (data) {
         setPersonalInfo(data);
         if (data.fonepayQR?.qrCodeUrl) {
@@ -73,7 +76,7 @@ export default function PersonalInfoManagement() {
         if (data.khaltiQR?.qrCodeUrl) {
           setKhaltiQRPreview(data.khaltiQR.qrCodeUrl);
         }
-        
+
         // Initialize bank QR forms
         if (data.bankQRs && data.bankQRs.length > 0) {
           setBankQRForms(
@@ -131,7 +134,7 @@ export default function PersonalInfoManagement() {
 
     setIsSubmitting(true);
     try {
-      await updateFonePayQR(fonepayQRFile);
+      await updateFonePayQR(fonepayQRFile, token);
       toast.success("FonePay QR updated successfully");
       setIsEditingFonePay(false);
       setFonepayQRFile(null);
@@ -180,7 +183,7 @@ export default function PersonalInfoManagement() {
 
     setIsSubmitting(true);
     try {
-      await updateEsewaQR(esewaQRFile);
+      await updateEsewaQR(esewaQRFile, token);
       toast.success("eSewa QR updated successfully");
       setIsEditingEsewa(false);
       setEsewaQRFile(null);
@@ -229,7 +232,7 @@ export default function PersonalInfoManagement() {
 
     setIsSubmitting(true);
     try {
-      await updateKhaltiQR(khaltiQRFile);
+      await updateKhaltiQR(khaltiQRFile, token);
       toast.success("Khalti QR updated successfully");
       setIsEditingKhalti(false);
       setKhaltiQRFile(null);
@@ -312,7 +315,7 @@ export default function PersonalInfoManagement() {
           accountHolderName: form.accountHolderName,
           swiftCode: form.swiftCode || undefined,
           qrCode: form.qrCodeFile || undefined,
-        });
+        }, token);
         toast.success("Bank QR updated successfully");
       } else {
         // Add new - QR code is optional
@@ -322,7 +325,7 @@ export default function PersonalInfoManagement() {
           accountHolderName: form.accountHolderName,
           swiftCode: form.swiftCode || undefined,
           qrCode: form.qrCodeFile || undefined,
-        });
+        }, token);
         toast.success("Bank QR added successfully");
       }
       setEditingBankIndex(null);
@@ -351,7 +354,7 @@ export default function PersonalInfoManagement() {
 
     setIsSubmitting(true);
     try {
-      await deleteBankQR(bankQR._id);
+      await deleteBankQR(bankQR._id, token);
       toast.success("Bank QR deleted successfully");
       await fetchPersonalInfo();
     } catch (err: any) {

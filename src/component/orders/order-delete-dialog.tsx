@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import { X, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { deleteOrder } from "@/services/order"
 
 interface OrderDeleteDialogProps {
   open: boolean
@@ -13,21 +15,18 @@ interface OrderDeleteDialogProps {
 
 export default function OrderDeleteDialog({ open, onOpenChange, orderId, onSuccess }: OrderDeleteDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
 
   const handleDelete = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/order/${orderId}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) throw new Error("Failed to delete")
-
+      await deleteOrder(orderId, token)
       toast.success("Order deleted successfully")
       onSuccess()
       onOpenChange(false)
     } catch (error) {
-       toast.error("Failed to delete order")
+      toast.error("Failed to delete order")
     } finally {
       setIsLoading(false)
     }

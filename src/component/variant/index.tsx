@@ -2,7 +2,9 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import {toast} from "sonner"
+import { useSession } from "next-auth/react"
+import { createVariant, updateVariant, deleteVariant } from "@/services/variant"
+import { toast } from "sonner"
 
 interface Variant {
   _id?: string
@@ -27,6 +29,8 @@ export default function VariantsPage() {
   const [imagePreview, setImagePreview] = useState<string>("")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [variantToDelete, setVariantToDelete] = useState<string | null>(null)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
 
   const API_BASE = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001/api"
 
@@ -70,27 +74,17 @@ export default function VariantsPage() {
       }
 
       if (editingId) {
-        const response = await fetch(`${API_BASE}/variant/update/${editingId}`, {
-          method: "PUT",
-          body: formDataToSend,
-        })
+        await updateVariant(editingId, formDataToSend, token)
 
-        if (!response.ok) {
-          throw new Error("Failed to update variant")
-        }
+
 
         toast.success("Variant updated successfully!")
         await fetchVariants()
         resetForm()
       } else {
-        const response = await fetch(`${API_BASE}/variant/create`, {
-          method: "POST",
-          body: formDataToSend,
-        })
+        await createVariant(formDataToSend, token)
 
-        if (!response.ok) {
-          throw new Error("Failed to create variant")
-        }
+
 
         toast.success("Variant created successfully!")
         await fetchVariants()
@@ -111,13 +105,9 @@ export default function VariantsPage() {
     if (!variantToDelete) return
 
     try {
-      const response = await fetch(`${API_BASE}/variant/delete/${variantToDelete}`, {
-        method: "DELETE",
-      })
+      await deleteVariant(variantToDelete, token)
 
-      if (!response.ok) {
-        throw new Error("Failed to delete variant")
-      }
+
 
       toast.success("Variant deleted successfully!")
       await fetchVariants()
@@ -440,13 +430,12 @@ export default function VariantsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
-                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                variant.stock > 10
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${variant.stock > 10
                                   ? "bg-green-100 text-green-800"
                                   : variant.stock > 0
                                     ? "bg-yellow-100 text-yellow-800"
                                     : "bg-red-100 text-red-800"
-                              }`}
+                                }`}
                             >
                               {variant.stock} units
                             </span>

@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/component/ui/card"
+import { getDashboardStats } from "@/services/dashboard"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
 interface OrderData {
@@ -13,12 +15,13 @@ interface OrderData {
 export function OrdersChart() {
   const [data, setData] = useState<OrderData[]>([])
   const [loading, setLoading] = useState(true)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/stats`)
-        const result = await response.json()
+        const result = await getDashboardStats(token)
         setData(result.charts.ordersOverTime)
       } catch (error) {
         console.error("Failed to fetch orders data:", error)

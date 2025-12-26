@@ -1,9 +1,14 @@
 import axios from "axios";
 
-export const getAllUser = async (page: number, limit: number) => {
+export const getAllUser = async (page: number, limit: number, token: string) => {
   try {
     const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/get/users/?page=${page}&limit=${limit}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/get/users/?page=${page}&limit=${limit}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -15,10 +20,15 @@ export const getAllUser = async (page: number, limit: number) => {
   }
 };
 
-export const deleteUser = async (id: string) => {
+export const deleteUser = async (id: string, token: string) => {
   try {
     const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/auth/deleteUser/${id}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/auth/deleteUser/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {

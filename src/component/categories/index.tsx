@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -66,59 +67,6 @@ export type Payment = {
   address: string;
 };
 
-const handleDelete = async (id: string) => {
-  try {
-    console.log(id);
-    await deleteSubCategory(id);
-    window.location.reload();
-  } catch (err) {
-    console.error("Error deleting user:", err);
-  }
-};
-
-export const columns: ColumnDef<Payment>[] = [
-  {
-    accessorKey: "name",
-    header: "Sub Category",
-    cell: ({ row }) => (
-      <div className="capitalize">{row.getValue("name")}</div>
-    ),
-  },
-  {
-    header: "Action",
-    cell: ({ row }) => (
-      <div className="flex justify-center">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" className="h-9 w-9 p-0 text-red-500 hover:text-red-700 hover:bg-red-50">
-              <MdDelete className="h-5 w-5" />
-              <span className="sr-only">Delete</span>
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent className="bg-white">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                category and remove the data from your servers.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="border border-gray-300">Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-red-600 hover:bg-red-700"
-                onClick={() => handleDelete(row.original._id)}
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    ),
-  },
-];
-
 export default function Categories() {
   const [users, setUsers] = useState<Payment[]>([]);
   const [users1, setUsers1] = useState<Payment[]>([]);
@@ -133,6 +81,61 @@ export default function Categories() {
   const [searchMala, setSearchMala] = useState("");
   const [searchBracelet, setSearchBracelet] = useState("");
   const [searchBeads, setSearchBeads] = useState("");
+  const { data: session } = useSession();
+  const token = (session?.user as any)?.jwt || "";
+
+  const handleDelete = async (id: string) => {
+    try {
+      console.log(id);
+      await deleteSubCategory(id, token);
+      window.location.reload();
+    } catch (err) {
+      console.error("Error deleting user:", err);
+    }
+  };
+
+  const columns: ColumnDef<Payment>[] = useMemo(() => [
+    {
+      accessorKey: "name",
+      header: "Sub Category",
+      cell: ({ row }) => (
+        <div className="capitalize">{row.getValue("name")}</div>
+      ),
+    },
+    {
+      header: "Action",
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" className="h-9 w-9 p-0 text-red-500 hover:text-red-700 hover:bg-red-50">
+                <MdDelete className="h-5 w-5" />
+                <span className="sr-only">Delete</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the
+                  category and remove the data from your servers.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="border border-gray-300">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 hover:bg-red-700"
+                  onClick={() => handleDelete(row.original._id)}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      ),
+    },
+  ], [token]);
 
   const malaTable = useReactTable({
     data: users,
@@ -198,7 +201,7 @@ export default function Categories() {
       const malaCategory = data.find((cat: any) => cat.name?.toLowerCase() === "mala");
       const braceletCategory = data.find((cat: any) => cat.name?.toLowerCase() === "bracelet");
       const beadsCategory = data.find((cat: any) => cat.name?.toLowerCase() === "beads");
-      
+
       setUsers(malaCategory?.subCategories || []);
       setUsers1(braceletCategory?.subCategories || []);
       setUsers2(beadsCategory?.subCategories || []);
@@ -212,11 +215,11 @@ export default function Categories() {
   const handleAddCategory = async (category: string) => {
     try {
       if (category === "Bracelet") {
-        await createSubCategory("67cd4f5f31a134d9c96b97db", name);
+        await createSubCategory("67cd4f5f31a134d9c96b97db", name, token);
       } else if (category === "Mala") {
-        await createSubCategory("67cd4fc131a134d9c96b97df", name);
+        await createSubCategory("67cd4fc131a134d9c96b97df", name, token);
       } else if (category === "Beads") {
-        await createSubCategoryByName("Beads", name);
+        await createSubCategoryByName("Beads", name, token);
       }
 
       window.location.reload();
@@ -267,7 +270,7 @@ export default function Categories() {
             <div className="bg-primaryColor/90 p-4">
               <h2 className="text-xl font-semibold text-white">Mala Categories</h2>
             </div>
-            
+
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">
                 <div className="relative w-64">
@@ -279,7 +282,7 @@ export default function Categories() {
                     className="pl-10 py-2"
                   />
                 </div>
-                
+
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button className="bg-primaryColor hover:bg-primaryColor/90  text-white">
@@ -305,8 +308,8 @@ export default function Categories() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         className="bg-primaryColor hover:bg-primaryColor/90"
                         onClick={() => handleAddCategory("Mala")}
                       >
@@ -316,7 +319,7 @@ export default function Categories() {
                   </DialogContent>
                 </Dialog>
               </div>
-              
+
               <div className="rounded-md border border-gray-200">
                 <Table>
                   <TableHeader>
@@ -327,9 +330,9 @@ export default function Categories() {
                             {header.isPlaceholder
                               ? null
                               : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
                           </TableHead>
                         ))}
                       </TableRow>
@@ -366,7 +369,7 @@ export default function Categories() {
                   </TableBody>
                 </Table>
               </div>
-              
+
               <div className="flex items-center justify-end space-x-2 py-4">
                 <Button
                   variant="outline"
@@ -395,7 +398,7 @@ export default function Categories() {
             <div className="bg-primaryColor/90 p-4">
               <h2 className="text-xl font-semibold text-white">Bracelet Categories</h2>
             </div>
-            
+
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">
                 <div className="relative w-64">
@@ -407,7 +410,7 @@ export default function Categories() {
                     className="pl-10 py-2"
                   />
                 </div>
-                
+
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button className="bg-primaryColor hover:bg-primaryColor/90 text-white">
@@ -433,7 +436,7 @@ export default function Categories() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button 
+                      <Button
                         onClick={() => handleAddCategory("Bracelet")}
                         className="bg-primaryColor hover:bg-primaryColor/90"
                       >
@@ -443,7 +446,7 @@ export default function Categories() {
                   </DialogContent>
                 </Dialog>
               </div>
-              
+
               <div className="rounded-md border border-gray-200">
                 <Table>
                   <TableHeader>
@@ -454,9 +457,9 @@ export default function Categories() {
                             {header.isPlaceholder
                               ? null
                               : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
                           </TableHead>
                         ))}
                       </TableRow>
@@ -493,7 +496,7 @@ export default function Categories() {
                   </TableBody>
                 </Table>
               </div>
-              
+
               <div className="flex items-center justify-end space-x-2 py-4">
                 <Button
                   variant="outline"
@@ -522,7 +525,7 @@ export default function Categories() {
             <div className="bg-primaryColor/90 p-4">
               <h2 className="text-xl font-semibold text-white">Beads Categories</h2>
             </div>
-            
+
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">
                 <div className="relative w-64">
@@ -534,7 +537,7 @@ export default function Categories() {
                     className="pl-10 py-2"
                   />
                 </div>
-                
+
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button className="bg-primaryColor hover:bg-primaryColor/90 text-white">
@@ -560,7 +563,7 @@ export default function Categories() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button 
+                      <Button
                         onClick={() => handleAddCategory("Beads")}
                         className="bg-primaryColor hover:bg-primaryColor/90"
                       >
@@ -570,7 +573,7 @@ export default function Categories() {
                   </DialogContent>
                 </Dialog>
               </div>
-              
+
               <div className="rounded-md border border-gray-200">
                 <Table>
                   <TableHeader>
@@ -581,9 +584,9 @@ export default function Categories() {
                             {header.isPlaceholder
                               ? null
                               : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
                           </TableHead>
                         ))}
                       </TableRow>
@@ -620,7 +623,7 @@ export default function Categories() {
                   </TableBody>
                 </Table>
               </div>
-              
+
               <div className="flex items-center justify-end space-x-2 py-4">
                 <Button
                   variant="outline"

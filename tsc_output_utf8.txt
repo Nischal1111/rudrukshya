@@ -1,0 +1,2 @@
+﻿src/component/event/index.tsx(140,43): error TS2554: Expected 1 arguments, but got 2.
+src/component/product-reviews/index.tsx(45,49): error TS2554: Expected 1 arguments, but got 2.

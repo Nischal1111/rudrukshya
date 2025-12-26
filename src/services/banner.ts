@@ -34,11 +34,11 @@ export const getBannerByName = async (name: string) => {
   }
 };
 
-export const createBanner = async (name: string, files: File[], youtubeLinks?: string[]) => {
+export const createBanner = async (name: string, files: File[], youtubeLinks: string[], token: string) => {
   try {
     const formData = new FormData();
     formData.append("name", name);
-    
+
     files.forEach((file) => {
       formData.append("thumbnails", file);
     });
@@ -55,6 +55,7 @@ export const createBanner = async (name: string, files: File[], youtubeLinks?: s
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -68,11 +69,11 @@ export const createBanner = async (name: string, files: File[], youtubeLinks?: s
   }
 };
 
-export const updateBanner = async (name: string, files: File[], youtubeLinks?: string[]) => {
+export const updateBanner = async (name: string, files: File[], youtubeLinks: string[], token: string) => {
   try {
     const formData = new FormData();
     formData.append("name", name);
-    
+
     files.forEach((file) => {
       formData.append("thumbnails", file);
     });
@@ -89,6 +90,7 @@ export const updateBanner = async (name: string, files: File[], youtubeLinks?: s
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -102,11 +104,14 @@ export const updateBanner = async (name: string, files: File[], youtubeLinks?: s
   }
 };
 
-export const deleteBannerImage = async (name: string, imageUrl: string) => {
+export const deleteBannerImage = async (name: string, imageUrl: string, token: string) => {
   try {
     const res = await axios.delete(
       `${process.env.NEXT_PUBLIC_BASE_URL}/banner/delete`,
       {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         data: { name, imageUrl },
       }
     );

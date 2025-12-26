@@ -1,6 +1,7 @@
 "use client"
-import { useState, useEffect, useMemo } from "react"
-import { FaPlus, FaTrash, FaEdit, FaMinus, FaSpinner } from "react-icons/fa"
+import { useState, useEffect, useMemo, useRef } from "react"
+import { useSession } from "next-auth/react"
+import { FaPlus, FaTrash, FaEdit, FaMinus, FaSpinner, FaRedo, FaUndo } from "react-icons/fa"
 import Image from "next/image"
 import {
   type ColumnDef,
@@ -10,7 +11,8 @@ import {
   getFilteredRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-
+import TiptapImage from "@tiptap/extension-image";
+import Link from "@tiptap/extension-link";
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -45,11 +47,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { getAllProduct } from "@/services/product"
 import { getAllCategories } from "@/services/categories"
-import { 
-  createEvent, 
-  getAllEvents, 
-  deleteEvent, 
-  addProductsToEvent, 
+import {
+  createEvent,
+  getAllEvents,
+  deleteEvent,
+  addProductsToEvent,
   removeProductsFromEvent,
   updateEvent,
   getEventById
@@ -57,6 +59,9 @@ import {
 import Loader from "../Loader"
 import { Card } from "@/component/ui/card"
 import { toast } from "sonner"
+import { useEditor } from "@tiptap/react"
+import StarterKit from "@tiptap/starter-kit"
+import { RichTextEditor } from "../textEditor/text-Editor"
 
 interface Product {
   _id: string
@@ -105,13 +110,36 @@ export default function EventManagement() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [activeTab, setActiveTab] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    editable: true,
+    extensions: [
+      StarterKit,
+      TiptapImage.configure({
+        inline: true,
+        allowBase64: true,
+      }),
+      Link.configure({
+        openOnClick: false,
+      }),
+    ],
+    content: "",
+    editorProps: {
+      attributes: {
+        class: "prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4",
+      },
+    },
+  });
 
   // Fetch all products
   const fetchProducts = async () => {
     try {
-      const data = await getAllProduct(1, 1000) // Fetch all products
+      const data = await getAllProduct("page=1&limit=1000") // Fetch all products
       setProducts(data?.products || [])
-      
+
       // Extract unique categories
       const uniqueCategories = Array.from(
         new Set(data?.products?.map((p: Product) => p.category).filter(Boolean) || [])
@@ -135,7 +163,7 @@ export default function EventManagement() {
       } else if (Array.isArray(response)) {
         eventsData = response
       }
-      
+
       // For each event, fetch full product details
       const eventsWithFullProducts = await Promise.all(
         eventsData.map(async (event) => {
@@ -143,7 +171,7 @@ export default function EventManagement() {
             try {
               const fullEvent = await getEventById(event._id)
               const eventData = fullEvent?.data || fullEvent
-              
+
               // Ensure products array exists and is properly formatted
               let products = []
               if (eventData && eventData.products && Array.isArray(eventData.products)) {
@@ -168,7 +196,7 @@ export default function EventManagement() {
                   category: product.category || "",
                 }))
               }
-              
+
               return {
                 ...event,
                 products: products,
@@ -180,39 +208,39 @@ export default function EventManagement() {
               // Return event with existing products if available
               return {
                 ...event,
-                products: event.products && Array.isArray(event.products) 
+                products: event.products && Array.isArray(event.products)
                   ? event.products.map((p: any) => ({
-                      _id: p._id || p,
-                      title: p.title || p.name || "",
-                      name: p.name || p.title || "",
-                      price: p.price || 0,
-                      img: p.img || p.images || [],
-                      images: p.images || p.img || [],
-                      category: p.category || "",
-                    }))
+                    _id: p._id || p,
+                    title: p.title || p.name || "",
+                    name: p.name || p.title || "",
+                    price: p.price || 0,
+                    img: p.img || p.images || [],
+                    images: p.images || p.img || [],
+                    category: p.category || "",
+                  }))
                   : []
               }
             }
           }
           return {
             ...event,
-            products: event.products && Array.isArray(event.products) 
+            products: event.products && Array.isArray(event.products)
               ? event.products.map((p: any) => ({
-                  _id: p._id || p,
-                  title: p.title || p.name || "",
-                  name: p.name || p.title || "",
-                  price: p.price || 0,
-                  img: p.img || p.images || [],
-                  images: p.images || p.img || [],
-                  category: p.category || "",
-                }))
+                _id: p._id || p,
+                title: p.title || p.name || "",
+                name: p.name || p.title || "",
+                price: p.price || 0,
+                img: p.img || p.images || [],
+                images: p.images || p.img || [],
+                category: p.category || "",
+              }))
               : []
           }
         })
       )
-      
+
       setEvents(eventsWithFullProducts)
-      
+
       // Set active tab to first event if available
       if (eventsWithFullProducts.length > 0 && !activeTab) {
         setActiveTab(eventsWithFullProducts[0]._id || null)
@@ -242,13 +270,13 @@ export default function EventManagement() {
   // Get products available to add (exclude products already in the event)
   const availableProducts = useMemo(() => {
     if (!openProductDialog) return filteredProducts
-    
+
     // Find the event that's currently open
     const currentEvent = events.find(e => e._id === openProductDialog)
     if (!currentEvent || !currentEvent.products || currentEvent.products.length === 0) {
       return filteredProducts
     }
-    
+
     // Extract product IDs from the event (handle both object and string IDs)
     const eventProductIds = new Set(
       currentEvent.products.map((p: any) => {
@@ -256,7 +284,7 @@ export default function EventManagement() {
         return p._id || p
       })
     )
-    
+
     // Filter out products that are already in the event
     return filteredProducts.filter((p) => !eventProductIds.has(p._id))
   }, [filteredProducts, openProductDialog, events])
@@ -357,6 +385,10 @@ export default function EventManagement() {
       toast.error("Please enter event title")
       return
     }
+    if (!editor) {
+      toast.error("Editor not initialized");
+      return;
+    }
 
     if (events.length >= 2) {
       toast.error("Maximum 2 events allowed")
@@ -373,6 +405,7 @@ export default function EventManagement() {
       return
     }
 
+
     setIsSubmitting(true)
     try {
       const formData = new FormData()
@@ -383,7 +416,7 @@ export default function EventManagement() {
         formData.append("bannerImage", img)
       })
 
-      await createEvent(formData)
+      await createEvent(formData, token)
       setEventForm({ title: "", description: "" })
       setBannerPopUpImage(null)
       setBannerPopUpImagePreview("")
@@ -410,20 +443,21 @@ export default function EventManagement() {
     setIsSubmitting(true)
     try {
       const formData = new FormData()
+
       formData.append("title", editForm.title)
       formData.append("description", editForm.description || "")
-      
+
       if (bannerPopUpImage) {
         formData.append("bannerPopUpImage", bannerPopUpImage)
       }
-      
+
       if (bannerImages.length > 0) {
         bannerImages.forEach((img) => {
           formData.append("bannerImage", img)
         })
       }
 
-      await updateEvent(eventId, formData)
+      await updateEvent(eventId, formData, token)
       setEditForm({ title: "", description: "" })
       setBannerPopUpImage(null)
       setBannerPopUpImagePreview("")
@@ -467,7 +501,7 @@ export default function EventManagement() {
     if (!eventId) return
 
     try {
-      await deleteEvent(eventId)
+      await deleteEvent(eventId, token)
       toast.success("Event deleted successfully")
       await fetchEvents()
     } catch (err: any) {
@@ -475,6 +509,8 @@ export default function EventManagement() {
       toast.error(err?.response?.data?.error || "Failed to delete event")
     }
   }
+
+
 
   // Handle add products to event
   const handleAddProductsToEvent = async (eventId: string) => {
@@ -484,7 +520,7 @@ export default function EventManagement() {
     }
 
     try {
-      await addProductsToEvent(eventId, Array.from(selectedProducts))
+      await addProductsToEvent(eventId, Array.from(selectedProducts), token)
       setSelectedProducts(new Set())
       setOpenProductDialog(null)
       await fetchEvents()
@@ -503,7 +539,7 @@ export default function EventManagement() {
     }
 
     try {
-      await removeProductsFromEvent(eventId, Array.from(productsToRemove))
+      await removeProductsFromEvent(eventId, Array.from(productsToRemove), token)
       setProductsToRemove(new Set())
       setOpenRemoveProductDialog(null)
       await fetchEvents()
@@ -550,8 +586,8 @@ export default function EventManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Event Management</h1>
-        <Dialog 
-          open={openEventDialog} 
+        <Dialog
+          open={openEventDialog}
           onOpenChange={(open) => {
             setOpenEventDialog(open)
             if (!open) {
@@ -584,18 +620,37 @@ export default function EventManagement() {
                 />
               </div>
 
+              {/* <div className="space-y-2">
+                <Label>Description *</Label>
+          <MenuBar editor={editor} onImageUpload={handleEditorImageUpload} />
+          <div className="border rounded-md">
+            <EditorContent editor={editor} />
+          </div>
+          <input
+            type="file"
+            ref={editorImageInputRef}
+            onChange={handleEditorImageFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+          <p className="text-sm text-gray-500 mt-2">
+            Use the toolbar above to format your content. Supports headings, lists, images, links, bold, italic, and more.
+          </p>
+
+              </div> */}
               <div className="space-y-2">
-                <Label htmlFor="description">Event Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Enter event description"
+                <Label>Description *</Label>
+                <RichTextEditor
                   value={eventForm.description}
-                  onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
-                  rows={4}
-                  className="resize-none"
+                  onChange={(html) => setEventForm({
+                    ...eventForm,
+                    description: html
+                  })}
+                  placeholder="Enter event description..."
+                  minHeight="300px"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="bannerPopUpImage">Banner Popup Image *</Label>
                 <Input
@@ -656,8 +711,8 @@ export default function EventManagement() {
               </div>
             </div>
             <DialogFooter>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 disabled={isSubmitting}
                 onClick={() => {
                   setOpenEventDialog(false)
@@ -691,15 +746,14 @@ export default function EventManagement() {
         <div className="w-full">
           {/* Tab Navigation */}
           <div className="flex border-b border-gray-200 mb-4">
-        {events.map((event) => (
+            {events.map((event) => (
               <button
                 key={event._id}
                 onClick={() => setActiveTab(event._id || null)}
-                className={`px-6 py-3 font-medium text-sm transition-colors ${
-                  activeTab === event._id
-                    ? "border-b-2 border-primaryColor text-primaryColor"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
+                className={`px-6 py-3 font-medium text-sm transition-colors ${activeTab === event._id
+                  ? "border-b-2 border-primaryColor text-primaryColor"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 {event.title}
               </button>
@@ -709,37 +763,39 @@ export default function EventManagement() {
           {/* Tab Content */}
           {events.map((event) => {
             if (activeTab !== event._id) return null
-            
+
             return (
               <div key={event._id} className="space-y-6">
                 {/* Event Header */}
                 <Card className="p-6">
-            <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-2xl font-semibold">{event.title}</h2>
+                        <h2 className="text-2xl font-semibold">{event.title}</h2>
                       </div>
-                      
+
                       {event.description && (
                         <div className="mb-4">
                           <Label className="text-xs text-muted-foreground mb-2 block">Description:</Label>
-                          <p className="text-sm text-gray-700 leading-relaxed">{event.description}</p>
+                          <div className="text-sm text-gray-700 leading-relaxed"><div
+                            dangerouslySetInnerHTML={{ __html: event.description }}
+                          /></div>
                         </div>
                       )}
-                      
-                {event.bannerPopUpImage && (
+
+                      {event.bannerPopUpImage && (
                         <div className="mt-2 mb-4">
                           <Label className="text-xs text-muted-foreground mb-2 block">Popup Image:</Label>
-                    <Image
-                      src={event.bannerPopUpImage}
-                      alt={event.title}
+                          <Image
+                            src={event.bannerPopUpImage}
+                            alt={event.title}
                             width={300}
                             height={180}
-                      className="rounded-md object-cover"
-                    />
-                  </div>
-                )}
-                      
+                            className="rounded-md object-cover"
+                          />
+                        </div>
+                      )}
+
                       {event.bannerImage && event.bannerImage.length > 0 && (
                         <div className="mt-2 mb-4">
                           <Label className="text-xs text-muted-foreground mb-2 block">Banner Images:</Label>
@@ -754,148 +810,148 @@ export default function EventManagement() {
                                 className="rounded-md object-cover"
                               />
                             ))}
-              </div>
+                          </div>
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex flex-col gap-2 ml-4">
-                <Dialog
-                  open={openProductDialog === event._id}
-                  onOpenChange={(open) => {
-                    setOpenProductDialog(open ? event._id || null : null)
-                    if (!open) {
-                      setSelectedProducts(new Set())
-                      setSelectedCategory(null)
-                      productTable.getColumn("title")?.setFilterValue("")
-                    }
-                  }}
-                >
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <FaPlus className="mr-2" />
-                      Add Products
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Add Products to {event.title}</DialogTitle>
-                      <DialogDescription>
-                        Select products to add to this event
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      {/* Search and Category Filter */}
-                      <div className="flex items-center gap-4 flex-wrap">
-                        <Input
-                          placeholder="Search products..."
-                          value={(productTable.getColumn("title")?.getFilterValue() as string) ?? ""}
-                          onChange={(event) => productTable.getColumn("title")?.setFilterValue(event.target.value)}
-                          className="max-w-sm"
-                        />
-                        <div className="flex items-center gap-2">
-                          <Label>Filter by Category:</Label>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline">
-                                {selectedCategory || "All Categories"}
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem onClick={() => setSelectedCategory(null)}>
-                                All Categories
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {categories.map((cat) => (
-                                <DropdownMenuItem
-                                  key={cat}
-                                  onClick={() => setSelectedCategory(cat)}
-                                >
-                                  {cat}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          {selectedCategory && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSelectedCategory(null)}
-                            >
-                              Clear Filter
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Products Table */}
-                      <div className="border rounded-md">
-                        <Table>
-                          <TableHeader>
-                            {productTable.getHeaderGroups().map((headerGroup) => (
-                              <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => (
-                                  <TableHead key={header.id} className="text-center">
-                                    {header.isPlaceholder
-                                      ? null
-                                      : flexRender(header.column.columnDef.header, header.getContext())}
-                                  </TableHead>
-                                ))}
-                              </TableRow>
-                            ))}
-                          </TableHeader>
-                          <TableBody>
-                            {productTable.getRowModel().rows?.length ? (
-                              productTable.getRowModel().rows.map((row) => (
-                                <TableRow key={row.id}>
-                                  {row.getVisibleCells().map((cell) => (
-                                    <TableCell key={cell.id} className="text-center">
-                                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                    </TableCell>
-                                  ))}
-                                </TableRow>
-                              ))
-                            ) : (
-                              <TableRow>
-                                <TableCell
-                                  colSpan={productColumns.length}
-                                  className="h-24 text-center"
-                                >
-                                  No products found.
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-
-                      <div className="text-sm text-muted-foreground">
-                        Selected: {selectedProducts.size} product(s)
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setOpenProductDialog(null)
-                          setSelectedProducts(new Set())
-                          setSelectedCategory(null)
+                      <Dialog
+                        open={openProductDialog === event._id}
+                        onOpenChange={(open) => {
+                          setOpenProductDialog(open ? event._id || null : null)
+                          if (!open) {
+                            setSelectedProducts(new Set())
+                            setSelectedCategory(null)
+                            productTable.getColumn("title")?.setFilterValue("")
+                          }
                         }}
                       >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={() => event._id && handleAddProductsToEvent(event._id)}
-                        disabled={selectedProducts.size === 0}
-                      >
-                        Add Selected Products ({selectedProducts.size})
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <FaPlus className="mr-2" />
+                            Add Products
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Add Products to {event.title}</DialogTitle>
+                            <DialogDescription>
+                              Select products to add to this event
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            {/* Search and Category Filter */}
+                            <div className="flex items-center gap-4 flex-wrap">
+                              <Input
+                                placeholder="Search products..."
+                                value={(productTable.getColumn("title")?.getFilterValue() as string) ?? ""}
+                                onChange={(event) => productTable.getColumn("title")?.setFilterValue(event.target.value)}
+                                className="max-w-sm"
+                              />
+                              <div className="flex items-center gap-2">
+                                <Label>Filter by Category:</Label>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="outline">
+                                      {selectedCategory || "All Categories"}
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent>
+                                    <DropdownMenuItem onClick={() => setSelectedCategory(null)}>
+                                      All Categories
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {categories.map((cat) => (
+                                      <DropdownMenuItem
+                                        key={cat}
+                                        onClick={() => setSelectedCategory(cat)}
+                                      >
+                                        {cat}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                                {selectedCategory && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setSelectedCategory(null)}
+                                  >
+                                    Clear Filter
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
 
-                      <Button 
-                        variant="outline" 
+                            {/* Products Table */}
+                            <div className="border rounded-md">
+                              <Table>
+                                <TableHeader>
+                                  {productTable.getHeaderGroups().map((headerGroup) => (
+                                    <TableRow key={headerGroup.id}>
+                                      {headerGroup.headers.map((header) => (
+                                        <TableHead key={header.id} className="text-center">
+                                          {header.isPlaceholder
+                                            ? null
+                                            : flexRender(header.column.columnDef.header, header.getContext())}
+                                        </TableHead>
+                                      ))}
+                                    </TableRow>
+                                  ))}
+                                </TableHeader>
+                                <TableBody>
+                                  {productTable.getRowModel().rows?.length ? (
+                                    productTable.getRowModel().rows.map((row) => (
+                                      <TableRow key={row.id}>
+                                        {row.getVisibleCells().map((cell) => (
+                                          <TableCell key={cell.id} className="text-center">
+                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                          </TableCell>
+                                        ))}
+                                      </TableRow>
+                                    ))
+                                  ) : (
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={productColumns.length}
+                                        className="h-24 text-center"
+                                      >
+                                        No products found.
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </TableBody>
+                              </Table>
+                            </div>
+
+                            <div className="text-sm text-muted-foreground">
+                              Selected: {selectedProducts.size} product(s)
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setOpenProductDialog(null)
+                                setSelectedProducts(new Set())
+                                setSelectedCategory(null)
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={() => event._id && handleAddProductsToEvent(event._id)}
+                              disabled={selectedProducts.size === 0}
+                            >
+                              Add Selected Products ({selectedProducts.size})
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => event._id && handleOpenEditDialog(event._id)}
                       >
@@ -933,18 +989,38 @@ export default function EventManagement() {
                               />
                             </div>
 
-                            <div className="space-y-2">
+                            {/* <div className="space-y-2">
                               <Label htmlFor="edit-description">Event Description</Label>
-                              <Textarea
-                                id="edit-description"
-                                placeholder="Enter event description"
-                                value={editForm.description}
-                                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                                rows={4}
-                                className="resize-none"
-                              />
-                            </div>
-                            
+                              <MenuBar editor={editor} onImageUpload={handleEditorImageUpload} />
+          <div className="border rounded-md">
+            <EditorContent editor={editor} />
+          </div>
+          <input
+            type="file"
+            ref={editorImageInputRef}
+            onChange={handleEditorImageFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+          <p className="text-sm text-gray-500 mt-2">
+            Use the toolbar above to format your content. Supports headings, lists, images, links, bold, italic, and more.
+          </p>
+                            </div> */
+                              <div className="space-y-2">
+                                <Label>Description *</Label>
+                                <RichTextEditor
+                                  value={editForm.description}
+                                  onChange={(html) => setEditForm({
+                                    ...editForm,
+                                    description: html
+                                  })}
+                                  placeholder="Enter event description..."
+                                  minHeight="300px"
+                                />
+                              </div>
+                            }
+
+
                             <div className="space-y-2">
                               <Label htmlFor="edit-bannerPopUpImage">Banner Popup Image (Leave empty to keep current)</Label>
                               <Input
@@ -1007,8 +1083,8 @@ export default function EventManagement() {
                             </div>
                           </div>
                           <DialogFooter>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               disabled={isSubmitting}
                               onClick={() => {
                                 setOpenEditDialog(null)
@@ -1022,8 +1098,8 @@ export default function EventManagement() {
                             >
                               Cancel
                             </Button>
-                            <Button 
-                              disabled={isSubmitting} 
+                            <Button
+                              disabled={isSubmitting}
                               onClick={() => event._id && handleEditEvent(event._id)}
                             >
                               {isSubmitting ? (
@@ -1034,39 +1110,39 @@ export default function EventManagement() {
                               ) : (
                                 "Update Event"
                               )}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                      <FaTrash className="mr-2" />
-                      Delete
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the event.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-red-600"
-                        onClick={() => handleDeleteEvent(event._id)}
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </div>
-          </Card>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                            <FaTrash className="mr-2" />
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the event.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-red-600"
+                              onClick={() => handleDeleteEvent(event._id)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </Card>
 
                 {/* Products Table */}
                 <Card className="p-6">
@@ -1139,7 +1215,7 @@ export default function EventManagement() {
                                   </Button>
                                 )}
                               </div>
-      </div>
+                            </div>
 
                             {/* Products Table */}
                             <div className="border rounded-md">
@@ -1252,11 +1328,11 @@ export default function EventManagement() {
                                   <TableBody>
                                     {event.products.map((product: any, index: number) => {
                                       const productImg = product.img || product.images
-                                      const imgSrc = Array.isArray(productImg) 
+                                      const imgSrc = Array.isArray(productImg)
                                         ? (productImg.length > 0 ? productImg[0] : null)
                                         : productImg
                                       const productId = product._id || product
-                                      
+
                                       return (
                                         <TableRow key={productId || index}>
                                           <TableCell className="text-center">
@@ -1356,12 +1432,12 @@ export default function EventManagement() {
                                 </TableRow>
                               )
                             }
-                            
+
                             const productImg = product.img || product.images
-                            const imgSrc = Array.isArray(productImg) 
+                            const imgSrc = Array.isArray(productImg)
                               ? (productImg.length > 0 ? productImg[0] : null)
                               : productImg
-                            
+
                             return (
                               <TableRow key={product._id || product || index}>
                                 <TableCell className="text-center">

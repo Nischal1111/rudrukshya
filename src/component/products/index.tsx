@@ -1,5 +1,6 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { useSession } from "next-auth/react"
 import { MdOutlineModeEditOutline, MdDelete } from "react-icons/md"
 import { FaPlus } from "react-icons/fa"
 import Link from "next/link"
@@ -40,7 +41,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { TailwindSwitch } from "@/components/ui/switch"
-import { deleteProduct } from "@/services/product"
+import { deleteProduct, toggleProductField, getAllProduct } from "@/services/product"
 import Loader from "../Loader"
 
 export type Payment = {
@@ -55,142 +56,6 @@ export type Payment = {
   isSale?: boolean
 }
 
-// --- Delete product handler ---
-const handleDelete = async (id: string | undefined) => {
-  try {
-    if (id) await deleteProduct(id)
-    window.location.reload()
-  } catch (err) {
-    console.error("Error deleting product:", err)
-  }
-}
-
-// --- Toggle boolean fields handler ---
-const handleToggleSpecial = async (id: string | undefined, field: string) => {
-  try {
-    if (!id) return
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/product/toggle/${id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ field }),
-    })
-    if (!response.ok) throw new Error("Failed to update product")
-  } catch (err) {
-    console.error("Error updating product:", err)
-  }
-}
-
-// --- Table Columns ---
-export const columns: ColumnDef<Payment>[] = [
-  {
-    accessorKey: "img",
-    header: "Image",
-    cell: ({ row }) => (
-      <div className="capitalize flex justify-center align-center w-20 h-20">
-        <Image
-          src={(row.getValue("img") as string[])[0] || "/placeholder.svg"}
-          alt="image"
-          width={80}
-          height={80}
-          className="rounded-md w-full h-full object-cover"
-        />
-      </div>
-    ),
-  },
-  {
-    accessorKey: "title",
-    header: () => <div className="capitalize text-center">Title</div>,
-    cell: ({ row }) => <div className="text-center">{row.getValue("title")}</div>,
-  },
-  {
-    accessorKey: "price",
-    header: "Price",
-    cell: ({ row }) => <div className="capitalize text-center">{row.getValue("price") || "Contact Us"}</div>,
-  },
-  {
-    accessorKey: "category",
-    header: "Category",
-    cell: ({ row }) => <div className="capitalize text-center">{row.getValue("category")}</div>,
-  },
-  {
-    accessorKey: "isSpecial",
-    header: "Special",
-    cell: ({ row }) => (
-      <div className="flex justify-center">
-        <TailwindSwitch
-          checked={row.getValue("isSpecial") as boolean}
-          onCheckedChange={() => handleToggleSpecial(row.original._id, "isSpecial")}
-        />
-      </div>
-    ),
-  },
-  {
-    accessorKey: "isTopSelling",
-    header: "Top Selling",
-    cell: ({ row }) => (
-      <div className="flex justify-center">
-        <TailwindSwitch
-          checked={row.getValue("isTopSelling") as boolean}
-          onCheckedChange={() => handleToggleSpecial(row.original._id, "isTopSelling")}
-        />
-      </div>
-    ),
-  },
-  {
-    accessorKey: "isExclusive",
-    header: "Exclusive",
-    cell: ({ row }) => (
-      <div className="flex justify-center">
-        <TailwindSwitch
-          checked={row.getValue("isExclusive") as boolean}
-          onCheckedChange={() => handleToggleSpecial(row.original._id, "isExclusive")}
-        />
-      </div>
-    ),
-  },
-  {
-    header: "Action ",
-    cell: ({ row }) => (
-      <div className="flex gap-5 justify-center">
-        <div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline">
-                <MdDelete className="text-red-600 text-xl" />
-                <h1 className="text-red-600">Delete</h1>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the product and remove its data.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction className="bg-red-600" onClick={() => handleDelete(row.original._id)}>
-                  Continue
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-        <div>
-          <Link href={`/products/product/${row.original._id}`} passHref>
-            <Button variant="outline">
-              <MdOutlineModeEditOutline className="text-xl " />
-              <h1>Edit</h1>
-            </Button>
-          </Link>
-        </div>
-      </div>
-    ),
-  },
-]
-
 // --- Main Component ---
 export default function ProductsList() {
   const [users, setUsers] = useState<Payment[]>([])
@@ -203,6 +68,137 @@ export default function ProductsList() {
   const [totalPages, setTotalPages] = useState(1)
   const [rowSelection, setRowSelection] = useState({})
   const [selectedFilter, setSelectedFilter] = useState<string | null>(null)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
+
+  // --- Delete product handler ---
+  const handleDelete = async (id: string | undefined) => {
+    try {
+      if (id) await deleteProduct(id, token)
+      window.location.reload()
+    } catch (err) {
+      console.error("Error deleting product:", err)
+    }
+  }
+
+  // --- Toggle boolean fields handler ---
+  const handleToggleSpecial = async (id: string | undefined, field: string) => {
+    try {
+      if (!id) return
+      await toggleProductField(id, field, token)
+    } catch (err) {
+      console.error("Error updating product:", err)
+    }
+  }
+
+  // --- Table Columns ---
+  const columns: ColumnDef<Payment>[] = useMemo(() => [
+    {
+      accessorKey: "img",
+      header: "Image",
+      cell: ({ row }) => (
+        <div className="capitalize flex justify-center align-center w-20 h-20">
+          <Image
+            src={(row.getValue("img") as string[])[0] || "/placeholder.svg"}
+            alt="image"
+            width={80}
+            height={80}
+            className="rounded-md w-full h-full object-cover"
+          />
+        </div>
+      ),
+    },
+    {
+      accessorKey: "title",
+      header: () => <div className="capitalize text-center">Title</div>,
+      cell: ({ row }) => <div className="text-center">{row.getValue("title")}</div>,
+    },
+    {
+      accessorKey: "price",
+      header: "Price",
+      cell: ({ row }) => <div className="capitalize text-center">{row.getValue("price") || "Contact Us"}</div>,
+    },
+    {
+      accessorKey: "category",
+      header: "Category",
+      cell: ({ row }) => <div className="capitalize text-center">{row.getValue("category")}</div>,
+    },
+    {
+      accessorKey: "isSpecial",
+      header: "Special",
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <TailwindSwitch
+            checked={row.getValue("isSpecial") as boolean}
+            onCheckedChange={() => handleToggleSpecial(row.original._id, "isSpecial")}
+          />
+        </div>
+      ),
+    },
+    {
+      accessorKey: "isTopSelling",
+      header: "Top Selling",
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <TailwindSwitch
+            checked={row.getValue("isTopSelling") as boolean}
+            onCheckedChange={() => handleToggleSpecial(row.original._id, "isTopSelling")}
+          />
+        </div>
+      ),
+    },
+    {
+      accessorKey: "isExclusive",
+      header: "Exclusive",
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <TailwindSwitch
+            checked={row.getValue("isExclusive") as boolean}
+            onCheckedChange={() => handleToggleSpecial(row.original._id, "isExclusive")}
+          />
+        </div>
+      ),
+    },
+    {
+      header: "Action ",
+      cell: ({ row }) => (
+        <div className="flex gap-5 justify-center">
+          <div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline">
+                  <MdDelete className="text-red-600 text-xl" />
+                  <h1 className="text-red-600">Delete</h1>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the product and remove its data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction className="bg-red-600" onClick={() => handleDelete(row.original._id)}>
+                    Continue
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+          <div>
+            <Link href={`/products/product/${row.original._id}`} passHref>
+              <Button variant="outline">
+                <MdOutlineModeEditOutline className="text-xl " />
+                <h1>Edit</h1>
+              </Button>
+            </Link>
+          </div>
+        </div>
+      ),
+    },
+  ], [token])
 
   const table = useReactTable({
     data: users,
@@ -236,8 +232,8 @@ export default function ProductsList() {
         ...(filterValue.length && { filterValue: filterValue.join(",") }),
       })
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/get/products?${query}`)
-      const data = await res.json()
+      const res = await getAllProduct(query.toString())
+      const data = res
 
       setPage(data.pagination.currentPage)
       setTotalPages(data.pagination.totalPages)
@@ -277,7 +273,7 @@ export default function ProductsList() {
           />
         </div>
         <div className="gap-5">
-             <DropdownMenu>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">{selectedFilter ? `Filter: ${selectedFilter}` : "Filter"}</Button>
             </DropdownMenuTrigger>
@@ -298,15 +294,15 @@ export default function ProductsList() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-        <Link href="/products/product/new" passHref>
-          <Button className="bg-primaryColor hover:bg-primaryColor/90 text-sm ml-5">
-            <FaPlus className="text-base text-white " />
-            <h1 className="text-white text-base">Add Product</h1>
-          </Button>
-        </Link>
+          <Link href="/products/product/new" passHref>
+            <Button className="bg-primaryColor hover:bg-primaryColor/90 text-sm ml-5">
+              <FaPlus className="text-base text-white " />
+              <h1 className="text-white text-base">Add Product</h1>
+            </Button>
+          </Link>
         </div>
 
-       
+
       </div>
 
       {/* 🧾 Product Table */}

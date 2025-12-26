@@ -1,9 +1,14 @@
 import axios from "axios";
 
-export const getContacts = async () => {
+export const getContacts = async (token: string) => {
   try {
     const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/contact`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/contact`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -15,10 +20,15 @@ export const getContacts = async () => {
   }
 };
 
-export const getContactById = async (id: string) => {
+export const getContactById = async (id: string, token: string) => {
   try {
     const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/contact/${id}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/contact/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -30,7 +40,7 @@ export const getContactById = async (id: string) => {
   }
 };
 
-export const createContact = async (data: { location: string; phone: string; email: string }) => {
+export const createContact = async (data: { location: string; phone: string; email: string }, token: string) => {
   try {
     // Ensure data is properly formatted
     const payload = {
@@ -38,12 +48,12 @@ export const createContact = async (data: { location: string; phone: string; ema
       phone: String(data.phone || "").trim(),
       email: String(data.email || "").trim(),
     };
-    
+
     // Validate payload before sending
     if (!payload.location || !payload.phone || !payload.email) {
       throw new Error("All fields (location, phone, email) are required");
     }
-    
+
     console.log("Creating contact with payload:", payload);
     const res = await axios.post(
       `${process.env.NEXT_PUBLIC_BASE_URL}/contact`,
@@ -51,6 +61,7 @@ export const createContact = async (data: { location: string; phone: string; ema
       {
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -67,7 +78,7 @@ export const createContact = async (data: { location: string; phone: string; ema
   }
 };
 
-export const updateContact = async (id: string, data: { location: string; phone: string; email: string }) => {
+export const updateContact = async (id: string, data: { location: string; phone: string; email: string }, token: string) => {
   try {
     // Ensure data is properly formatted
     const payload = {
@@ -75,12 +86,12 @@ export const updateContact = async (id: string, data: { location: string; phone:
       phone: String(data.phone || "").trim(),
       email: String(data.email || "").trim(),
     };
-    
+
     // Validate payload before sending
     if (!payload.location || !payload.phone || !payload.email) {
       throw new Error("All fields (location, phone, email) are required");
     }
-    
+
     console.log("Updating contact with ID:", id, "payload:", payload);
     const res = await axios.put(
       `${process.env.NEXT_PUBLIC_BASE_URL}/contact/${id}`,
@@ -88,6 +99,7 @@ export const updateContact = async (id: string, data: { location: string; phone:
       {
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -104,10 +116,15 @@ export const updateContact = async (id: string, data: { location: string; phone:
   }
 };
 
-export const deleteContact = async (id: string) => {
+export const deleteContact = async (id: string, token: string) => {
   try {
     const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/contact/${id}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/contact/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
