@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Eye, Edit2, Trash2, Image as ImageIcon } from "lucide-react"
 import { Badge } from "@/component/ui/badge"
 import { format } from "date-fns"
+import Image from "next/image"
 
 interface OrderTableRowProps {
   order: any
@@ -54,12 +55,10 @@ export default function OrderTableRow({ order, onView, onEdit, onDelete }: Order
       <TableCell>
         <div className="flex items-center gap-2">
           {order?.paymentMethod || "-"}
-          {order?.paymentVerificationImage && (
-            <span title="Payment verification image available" className="inline-flex">
-              <ImageIcon className="h-4 w-4 text-green-600" aria-hidden="true" />
-            </span>
-          )}
         </div>
+      </TableCell>
+      <TableCell>
+        {order?.paymentVerificationImage ? <Image src={order?.paymentVerificationImage} alt="Payment verification" width={20} height={20} /> : "-"}
       </TableCell>
       <TableCell>{format(new Date(order?.createdAt), "MMM dd, yyyy")}</TableCell>
       <TableCell className="text-right">

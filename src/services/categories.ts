@@ -15,11 +15,16 @@ export const getAllCategories = async () => {
   }
 };
 
-export const createSubCategory = async (id: string, name: string) => {
+export const createSubCategory = async (id: string, name: string, token: string) => {
   try {
     const res = await axios.post(
       `${process.env.NEXT_PUBLIC_BASE_URL}/category/create/subCategory/${id}`,
-      { name: name }
+      { name: name },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -31,10 +36,16 @@ export const createSubCategory = async (id: string, name: string) => {
   }
 };
 
-export const deleteSubCategory = async (id: string) => {
+export const deleteSubCategory = async (id: string, token: string) => {
   try {
     const res = await axios.patch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/category/delete/${id}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/category/delete/${id}`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -46,11 +57,16 @@ export const deleteSubCategory = async (id: string) => {
   }
 };
 
-export const createSubCategoryByName = async (categoryName: string, name: string) => {
+export const createSubCategoryByName = async (categoryName: string, name: string, token: string) => {
   try {
     const res = await axios.post(
       `${process.env.NEXT_PUBLIC_BASE_URL}/category/create/subCategory/byName/${categoryName}`,
-      { name: name }
+      { name: name },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {

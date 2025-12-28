@@ -1,9 +1,9 @@
 import axios from "axios";
 
-export const getAllProduct = async (page: number, limit: number) => {
+export const getAllProduct = async (query: string) => {
   try {
     const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/get/products?page=${page}&limit=${limit}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/get/products?${query}`
     );
     return res.data;
   } catch (err: unknown) {
@@ -15,10 +15,15 @@ export const getAllProduct = async (page: number, limit: number) => {
   }
 };
 
-export const deleteProduct = async (id: string) => {
+export const deleteProduct = async (id: string, token: string) => {
   try {
     const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/product/delete/${id}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/product/delete/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -30,11 +35,16 @@ export const deleteProduct = async (id: string) => {
   }
 };
 
-export const createProduct = async (data: any) => {
+export const createProduct = async (data: any, token: string) => {
   try {
     const res = await axios.post(
       `${process.env.NEXT_PUBLIC_BASE_URL}/product/create`,
-      data
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -61,11 +71,37 @@ export const singleProduct = async (id: string) => {
   }
 };
 
-export const updateProduct = async (id: string, data: any) => {
+export const updateProduct = async (id: string, data: any, token: string) => {
   try {
     const res = await axios.patch(
       `${process.env.NEXT_PUBLIC_BASE_URL}/product/update/${id}`,
-      data
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      throw new Error(err.message);
+    } else {
+      throw new Error("An unexpected error occurred");
+    }
+  }
+};
+
+export const toggleProductField = async (id: string, field: string, token: string) => {
+  try {
+    const res = await axios.patch(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/product/toggle/${id}`,
+      { field },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {

@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/component/ui/card"
 import { Input } from "@/components/ui/input"
+import { updatePromocode, deletePromocode } from "@/services/promocode"
 
 interface PromoCodeItemProps {
   promo: any
@@ -22,29 +24,20 @@ export default function PromoCodeItem({ promo, onDelete, onUpdate }: PromoCodeIt
     isActive: promo.isActive,
     usageLimit: promo.usageLimit || "",
   })
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
 
   const handleUpdate = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/promocode/update/${promo._id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: formData.code,
-          discountPercentage: formData.discountPercentage
-            ? Number.parseInt(formData.discountPercentage.toString())
-            : undefined,
-          discountAmount: formData.discountAmount ? Number.parseInt(formData.discountAmount.toString()) : undefined,
-          isActive: formData.isActive,
-          usageLimit: formData.usageLimit ? Number.parseInt(formData.usageLimit.toString()) : null,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        toast.error(data.message || "Failed to update promocode")
-        return
-      }
+      await updatePromocode(promo._id, {
+        code: formData.code,
+        discountPercentage: formData.discountPercentage
+          ? Number.parseInt(formData.discountPercentage.toString())
+          : undefined,
+        discountAmount: formData.discountAmount ? Number.parseInt(formData.discountAmount.toString()) : undefined,
+        isActive: formData.isActive,
+        usageLimit: formData.usageLimit ? Number.parseInt(formData.usageLimit.toString()) : null,
+      }, token)
 
       toast.success("Promocode updated successfully!")
       setIsEditing(false)
@@ -58,16 +51,7 @@ export default function PromoCodeItem({ promo, onDelete, onUpdate }: PromoCodeIt
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/promocode/delete/${promo._id}`, {
-        method: "DELETE",
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        toast.error(data.message || "Failed to delete promocode")
-        return
-      }
+      await deletePromocode(promo._id, token)
 
       toast.success("Promocode deleted successfully!")
       onDelete()

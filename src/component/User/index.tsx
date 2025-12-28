@@ -1,6 +1,7 @@
 "use client";
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -50,76 +51,6 @@ export type Payment = {
   address: string;
 };
 
-const handleDelete = async (id: string) => {
-  try {
-    console.log(id);
-    await deleteUser(id);
-    window.location.reload();
-  } catch (err) {
-    console.error("Error deleting user:", err);
-  }
-};
-
-export const columns: ColumnDef<Payment>[] = [
-  {
-    accessorKey: "fullName",
-    header: ({ column }) => (
-      <div className=" capitalize text-center ml-5">
-        Name
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          <ArrowUpDown />
-        </Button>
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className=" capitalize text-center">{row.getValue("fullName")}</div>
-    ),
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-    cell: ({ row }) => (
-      <div className="capitalize text-center">{row.getValue("email")}</div>
-    ),
-  },
-  {
-    header: "Action",
-    cell: ({ row }) => (
-      <div className="capitalize text-center">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline">
-              <MdDelete className="text-red-600 ml-2 text-xl" />
-              <h1 className="text-red-600 text-left">Delete</h1>
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                account and remove the data from your servers.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-red-600"
-                onClick={() => handleDelete(row.original._id)}
-              >
-                Continue
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    ),
-  },
-];
-
 export default function User() {
   const [users, setUsers] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,6 +62,78 @@ export default function User() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
+  const { data: session } = useSession();
+  const token = (session?.user as any)?.jwt || "";
+
+  const handleDelete = async (id: string) => {
+    try {
+      console.log(id);
+      await deleteUser(id, token);
+      window.location.reload();
+    } catch (err) {
+      console.error("Error deleting user:", err);
+    }
+  };
+
+  const columns: ColumnDef<Payment>[] = useMemo(() => [
+    {
+      accessorKey: "fullName",
+      header: ({ column }) => (
+        <div className=" capitalize text-center ml-5">
+          Name
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            <ArrowUpDown />
+          </Button>
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className=" capitalize text-center">{row.getValue("fullName")}</div>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => (
+        <div className="capitalize text-center">{row.getValue("email")}</div>
+      ),
+    },
+    {
+      header: "Action",
+      cell: ({ row }) => (
+        <div className="capitalize text-center">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline">
+                <MdDelete className="text-red-600 ml-2 text-xl" />
+                <h1 className="text-red-600 text-left">Delete</h1>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the
+                  account and remove the data from your servers.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600"
+                  onClick={() => handleDelete(row.original._id)}
+                >
+                  Continue
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      ),
+    },
+  ], [token]);
 
   const table = useReactTable({
     data: users,
@@ -153,7 +156,7 @@ export default function User() {
 
   const fetchData = async (page: number, limit: number) => {
     try {
-      const data = await getAllUser(page, limit);
+      const data = await getAllUser(page, limit, token);
 
       setPage(data.currentPage);
       if (data.currentPage === data.totalPages) {
@@ -179,7 +182,7 @@ export default function User() {
     fetchData(page, 10);
   }, []);
 
-  if (loading) return <Loader/>
+  if (loading) return <Loader />
   if (error) return <div>Error: {error}</div>;
 
   return (
@@ -206,9 +209,9 @@ export default function User() {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 ))}
               </TableRow>

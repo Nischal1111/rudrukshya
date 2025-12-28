@@ -11,7 +11,7 @@ interface Blog {
   _id?: string;
   title: string;
   content: string;
-  image?: string;
+  thumbnail?: string;
   author?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -67,10 +67,10 @@ export default function BlogList() {
                 className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
                 onClick={() => router.push(`/blogs/${blog._id}`)}
               >
-                {blog.image && (
+                {blog.thumbnail && (
                   <div className="relative h-48 w-full">
                     <NextImage
-                      src={blog.image}
+                      src={blog.thumbnail}
                       alt={blog.title}
                       fill
                       className="object-cover"

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import axios from "axios"
 import MediaCard from "./media-card"
 import PaginationControls from "./pagination-controls"
@@ -43,6 +44,8 @@ export default function Gallery({ sendUploadId }: GalleryProps) {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
 
   useEffect(() => {
     fetchGallery()
@@ -54,6 +57,9 @@ export default function Gallery({ sendUploadId }: GalleryProps) {
     try {
       const response = await axios.get<GalleryResponse>(`${process.env.NEXT_PUBLIC_BASE_URL}/gallery`, {
         params: { page },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       })
 
       const { data, pagination } = response.data
@@ -70,8 +76,12 @@ export default function Gallery({ sendUploadId }: GalleryProps) {
 
   const handleDeleteMedia = async (uploadId: string, mediaId: string) => {
     try {
-      await axios.delete(`${process.env.NEXT_PUBLIC_BASE_URL}/uploads/${uploadId}/media/${mediaId}`)
-    toast.success("Media deleted successfully")
+      await axios.delete(`${process.env.NEXT_PUBLIC_BASE_URL}/upload/uploads/${uploadId}/media/${mediaId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      toast.success("Media deleted successfully")
       fetchGallery()
     } catch (err) {
       console.error("Failed to delete media:", err)

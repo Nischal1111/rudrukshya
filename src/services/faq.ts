@@ -30,11 +30,16 @@ export const getFAQById = async (id: string) => {
   }
 };
 
-export const createFAQ = async (data: { question: string; answer: string }) => {
+export const createFAQ = async (data: { question: string; answer: string }, token: string) => {
   try {
     const res = await axios.post(
       `${process.env.NEXT_PUBLIC_BASE_URL}/faq`,
-      data
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -46,11 +51,16 @@ export const createFAQ = async (data: { question: string; answer: string }) => {
   }
 };
 
-export const updateFAQ = async (id: string, data: { question: string; answer: string }) => {
+export const updateFAQ = async (id: string, data: { question: string; answer: string }, token: string) => {
   try {
     const res = await axios.put(
       `${process.env.NEXT_PUBLIC_BASE_URL}/faq/${id}`,
-      data
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {
@@ -62,10 +72,15 @@ export const updateFAQ = async (id: string, data: { question: string; answer: st
   }
 };
 
-export const deleteFAQ = async (id: string) => {
+export const deleteFAQ = async (id: string, token: string) => {
   try {
     const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/faq/${id}`
+      `${process.env.NEXT_PUBLIC_BASE_URL}/faq/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
     return res.data;
   } catch (err: unknown) {

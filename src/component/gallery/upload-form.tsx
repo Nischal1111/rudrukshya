@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import axios from "axios"
 import { toast } from "sonner"
+import { createUpload, addMedia } from "@/services/upload"
 
 interface UploadFormProps {
   onSuccess: () => void
@@ -19,6 +21,8 @@ export default function UploadForm({ onSuccess, uploadId }: UploadFormProps) {
   const [youtubeUrls, setYoutubeUrls] = useState<YouTubeInput[]>([{ id: "1", url: "" }])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -69,17 +73,13 @@ export default function UploadForm({ onSuccess, uploadId }: UploadFormProps) {
 
       if (uploadId) {
         // Add media to existing upload
-        await axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/uploads/${uploadId}/media`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        })
+        await addMedia(uploadId, formData, token)
       } else {
         // Create a new upload
-        await axios.post(`${process.env.NEXT_PUBLIC_BASE_URL}/uploads`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        })
-       
+        await createUpload(formData, token)
+
       }
-     toast.success("Media uploaded successfully")
+      toast.success("Media uploaded successfully")
       setSelectedFiles([])
       setYoutubeUrls([{ id: "1", url: "" }])
       setTimeout(() => {
@@ -94,7 +94,7 @@ export default function UploadForm({ onSuccess, uploadId }: UploadFormProps) {
   }
 
   return (
-       <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* Image Upload Section */}
       <div>
         <label className="block text-sm font-semibold text-foreground mb-2">Upload Images (Max 20)</label>

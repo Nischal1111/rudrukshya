@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import useSWR from "swr"
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Loader2 } from "lucide-react"
@@ -21,8 +22,12 @@ interface OrdersTableProps {
   onPageChange: (page: number) => void
 }
 
-const fetcher = async (url: string) => {
-  const res = await fetch(url)
+const fetcher = async ([url, token]: [string, string]) => {
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
   if (!res.ok) throw new Error("Failed to fetch orders")
   return res.json()
 }
@@ -39,8 +44,11 @@ export default function OrdersTable({ filters, page, onPageChange }: OrdersTable
     ? process.env.NEXT_PUBLIC_BASE_URL
     : `${process.env.NEXT_PUBLIC_BASE_URL}/`
 
+  const { data: session } = useSession()
+  const token = (session?.user as any)?.jwt || ""
+
   const { data, isLoading, error, mutate } = useSWR(
-    `${baseUrl}order/all?${queryParams.toString()}`,
+    [`${baseUrl}order/all?${queryParams.toString()}`, token],
     fetcher,
     { revalidateOnFocus: false }
   )
@@ -91,7 +99,9 @@ export default function OrdersTable({ filters, page, onPageChange }: OrdersTable
               <TableHead>Order Status</TableHead>
               <TableHead>Payment Status</TableHead>
               <TableHead>Payment Method</TableHead>
+              <TableHead>Payment Photo</TableHead>
               <TableHead>Created At</TableHead>
+
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>

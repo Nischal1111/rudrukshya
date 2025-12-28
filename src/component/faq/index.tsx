@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -55,6 +56,8 @@ export default function FAQManagement() {
     answer: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: session } = useSession();
+  const token = (session?.user as any)?.jwt || "";
 
   const fetchFAQs = async () => {
     try {
@@ -83,7 +86,7 @@ export default function FAQManagement() {
 
     setIsSubmitting(true);
     try {
-      await createFAQ(formData);
+      await createFAQ(formData, token);
       toast.success("FAQ created successfully");
       setFormData({ question: "", answer: "" });
       setOpenDialog(false);
@@ -104,7 +107,7 @@ export default function FAQManagement() {
 
     setIsSubmitting(true);
     try {
-      await updateFAQ(id, formData);
+      await updateFAQ(id, formData, token);
       toast.success("FAQ updated successfully");
       setFormData({ question: "", answer: "" });
       setOpenEditDialog(null);
@@ -119,7 +122,7 @@ export default function FAQManagement() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteFAQ(id);
+      await deleteFAQ(id, token);
       toast.success("FAQ deleted successfully");
       await fetchFAQs();
     } catch (err: any) {

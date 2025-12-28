@@ -3,6 +3,7 @@
 import { createProduct, singleProduct, updateProduct } from "@/services/product"
 import type React from "react"
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import * as z from "zod"
 import { type SubmitHandler, useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -19,6 +20,7 @@ import { useParams, useRouter } from "next/navigation"
 import { josefin } from "@/utils/font"
 import { IoArrowBackOutline } from "react-icons/io5"
 import { TailwindSwitch } from "@/components/ui/switch"
+import { RichTextEditor } from "@/component/textEditor/text-Editor"
 
 interface SubCategory {
   name: string
@@ -115,6 +117,7 @@ export type formFields = z.infer<typeof schema>
 
 const Demo: React.FC = () => {
   const router = useRouter()
+  const { data: session } = useSession()
   const [page, setPage] = useState<boolean>(false)
   const params = useParams<{ id: string }>()
   const {
@@ -188,45 +191,45 @@ const Demo: React.FC = () => {
 
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>): void => {
-  if (e.target.files && e.target.files.length > 0) {
-    const files = Array.from(e.target.files)
-    
-    if (productImages.length + files.length > 4) {
-      toast.error("You can only upload a maximum of 4 images.")
-      return
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files)
+
+      if (productImages.length + files.length > 4) {
+        toast.error("You can only upload a maximum of 4 images.")
+        return
+      }
+
+      const fileUrls = files.map((file) => URL.createObjectURL(file))
+
+      setUploadedFiles((prev) => [...prev, ...files])
+      setProductImages((prev) => [...prev, ...fileUrls])
+      setValue("img", [...productImages, ...fileUrls]) // Use productImages instead of watchImages
     }
-
-    const fileUrls = files.map((file) => URL.createObjectURL(file))
-
-    setUploadedFiles((prev) => [...prev, ...files])
-    setProductImages((prev) => [...prev, ...fileUrls])
-    setValue("img", [...productImages, ...fileUrls]) // Use productImages instead of watchImages
   }
-}
 
   const handleRemoveImage = (indexToRemove: number): void => {
-  const imageToRemove = productImages[indexToRemove]
+    const imageToRemove = productImages[indexToRemove]
 
-  if (imageToRemove.startsWith("http")) {
-    setRemovedImages((prev) => [...prev, imageToRemove])
-  } else {
-    // For newly uploaded files, we need to find and remove the corresponding file
-    // Count how many http images come before this index
-    const httpImagesBefore = productImages.slice(0, indexToRemove).filter(img => img.startsWith("http")).length
-    const fileIndexToRemove = indexToRemove - httpImagesBefore
-    
-    const newFiles = uploadedFiles.filter((_, i) => i !== fileIndexToRemove)
-    setUploadedFiles(newFiles)
-  }
+    if (imageToRemove.startsWith("http")) {
+      setRemovedImages((prev) => [...prev, imageToRemove])
+    } else {
+      // For newly uploaded files, we need to find and remove the corresponding file
+      // Count how many http images come before this index
+      const httpImagesBefore = productImages.slice(0, indexToRemove).filter(img => img.startsWith("http")).length
+      const fileIndexToRemove = indexToRemove - httpImagesBefore
 
-  const newImages = productImages.filter((_, i) => i !== indexToRemove)
-  setProductImages(newImages)
-  setValue("img", newImages)
-  
-  if (selectImage === imageToRemove) {
-    setSelectImage(newImages[0] || "")
+      const newFiles = uploadedFiles.filter((_, i) => i !== fileIndexToRemove)
+      setUploadedFiles(newFiles)
+    }
+
+    const newImages = productImages.filter((_, i) => i !== indexToRemove)
+    setProductImages(newImages)
+    setValue("img", newImages)
+
+    if (selectImage === imageToRemove) {
+      setSelectImage(newImages[0] || "")
+    }
   }
-}
 
   useEffect(() => {
     if (productImages.length > 0) {
@@ -268,7 +271,7 @@ const Demo: React.FC = () => {
 
   const handleAddWeightSize = () => {
     const size = sizeInput.trim()
-    
+
     if (size) {
       // Ensure "mm" is included in the size value
       const sizeWithUnit = size.toLowerCase().includes('mm') ? size : `${size} mm`
@@ -291,82 +294,82 @@ const Demo: React.FC = () => {
   }
 
   const handleAddDiscount = () => {
-  if (discountTitle.trim() && discountPercentage) {
-    if (editingDiscountIndex !== null) {
-      // Update existing discount
-      const newDiscounts = [...discounts]
-      newDiscounts[editingDiscountIndex] = { 
-        title: discountTitle.trim(), 
-        percentage: Number(discountPercentage) 
+    if (discountTitle.trim() && discountPercentage) {
+      if (editingDiscountIndex !== null) {
+        // Update existing discount
+        const newDiscounts = [...discounts]
+        newDiscounts[editingDiscountIndex] = {
+          title: discountTitle.trim(),
+          percentage: Number(discountPercentage)
+        }
+        setDiscounts(newDiscounts)
+        setValue("discount", newDiscounts)
+        setEditingDiscountIndex(null)
+      } else {
+        // Add new discount
+        const newDiscounts = [...discounts, { title: discountTitle.trim(), percentage: Number(discountPercentage) }]
+        setDiscounts(newDiscounts)
+        setValue("discount", newDiscounts)
+        setDiableDiscountAdd(true)
       }
-      setDiscounts(newDiscounts)
-      setValue("discount", newDiscounts)
-      setEditingDiscountIndex(null)
-    } else {
-      // Add new discount
-      const newDiscounts = [...discounts, { title: discountTitle.trim(), percentage: Number(discountPercentage) }]
-      setDiscounts(newDiscounts)
-      setValue("discount", newDiscounts)
-      setDiableDiscountAdd(true)
+      setDiscountTitle("")
+      setDiscountPercentage("")
     }
-    setDiscountTitle("")
-    setDiscountPercentage("")
   }
-}
 
-// Add function to start editing
-const handleEditDiscount = (index: number) => {
-  setEditingDiscountIndex(index)
-  setDiscountTitle(discounts[index].title)
-  setDiscountPercentage(String(discounts[index].percentage))
-  setDiableDiscountAdd(false)
-}
+  // Add function to start editing
+  const handleEditDiscount = (index: number) => {
+    setEditingDiscountIndex(index)
+    setDiscountTitle(discounts[index].title)
+    setDiscountPercentage(String(discounts[index].percentage))
+    setDiableDiscountAdd(false)
+  }
 
-// Add function to cancel editing
-const handleCancelEditDiscount = () => {
-  setEditingDiscountIndex(null)
-  setDiscountTitle("")
-  setDiscountPercentage("")
-  setDiableDiscountAdd(discounts.length > 0)
-}
-
-// Update handleRemoveDiscount
-const handleRemoveDiscount = (index: number) => {
-  const newDiscounts = discounts.filter((_, i) => i !== index)
-  setDiableDiscountAdd(false)
-  setDiscounts(newDiscounts)
-  setValue("discount", newDiscounts)
-  
-  // If we were editing this discount, cancel the edit
-  if (editingDiscountIndex === index) {
+  // Add function to cancel editing
+  const handleCancelEditDiscount = () => {
     setEditingDiscountIndex(null)
     setDiscountTitle("")
     setDiscountPercentage("")
+    setDiableDiscountAdd(discounts.length > 0)
   }
-}
+
+  // Update handleRemoveDiscount
+  const handleRemoveDiscount = (index: number) => {
+    const newDiscounts = discounts.filter((_, i) => i !== index)
+    setDiableDiscountAdd(false)
+    setDiscounts(newDiscounts)
+    setValue("discount", newDiscounts)
+
+    // If we were editing this discount, cancel the edit
+    if (editingDiscountIndex === index) {
+      setEditingDiscountIndex(null)
+      setDiscountTitle("")
+      setDiscountPercentage("")
+    }
+  }
 
   const handleAddSize = () => {
     if (newSizeName.trim() || newSizePrice || newSizeMm.trim()) {
       // Ensure "mm" is included in the size value
       const sizeMm = newSizeMm.trim()
       const sizeWithUnit = sizeMm.toLowerCase().includes('mm') ? sizeMm : `${sizeMm} mm`
-      
+
       if (editingSizeIndex !== null) {
         // Update existing size
         const newSizes = [...sizes]
-        newSizes[editingSizeIndex] = { 
-          name: newSizeName.trim(), 
-          price: newSizePrice ? Number(newSizePrice): null, 
-          size: newSizeMm?sizeWithUnit: ""
+        newSizes[editingSizeIndex] = {
+          name: newSizeName.trim(),
+          price: newSizePrice ? Number(newSizePrice) : null,
+          size: newSizeMm ? sizeWithUnit : ""
         }
         setSizes(newSizes)
         setEditingSizeIndex(null)
       } else {
         // Add new size
-        const newSizes = [...sizes, { 
-          name: newSizeName.trim(), 
-          price: newSizePrice ? Number(newSizePrice): null, 
-          size: newSizeMm?sizeWithUnit: ""
+        const newSizes = [...sizes, {
+          name: newSizeName.trim(),
+          price: newSizePrice ? Number(newSizePrice) : null,
+          size: newSizeMm ? sizeWithUnit : ""
         }]
         setSizes(newSizes)
       }
@@ -460,7 +463,7 @@ const handleRemoveDiscount = (index: number) => {
       console.log("Form data:", data)
       console.log("Form errors:", errors)
 
-      if(subCategoryOptions.length > 0 && !data.subCategory){
+      if (subCategoryOptions.length > 0 && !data.subCategory) {
         toast.error("Add at least one Sub Category")
         setIsLoading(false)
         return
@@ -482,23 +485,23 @@ const handleRemoveDiscount = (index: number) => {
 
       const formData = new FormData()
 
-      // Type-safe way to append form data
-      ;(Object.keys(data) as Array<keyof formFields>).forEach((key) => {
-        if (key !== "img" && key !== "keywords" && key !== "benefits" && key !== "discount" && key !== "variants" && key !== "weightSizeOptions") {
-          const value = data[key]
-          // Convert all values to strings, handle price specially
-          if (key === "price") {
-            // If contactForPrice is enabled, send empty string, otherwise send the price
-            if (contactForPrice) {
-              formData.append(key, "")
-            } else {
-              formData.append(key, value && value !== "" ? String(value) : "")
+        // Type-safe way to append form data
+        ; (Object.keys(data) as Array<keyof formFields>).forEach((key) => {
+          if (key !== "img" && key !== "keywords" && key !== "benefits" && key !== "discount" && key !== "variants" && key !== "weightSizeOptions") {
+            const value = data[key]
+            // Convert all values to strings, handle price specially
+            if (key === "price") {
+              // If contactForPrice is enabled, send empty string, otherwise send the price
+              if (contactForPrice) {
+                formData.append(key, "")
+              } else {
+                formData.append(key, value && value !== "" ? String(value) : "")
+              }
+            } else if (value !== undefined && value !== null) {
+              formData.append(key, String(value))
             }
-          } else if (value !== undefined && value !== null) {
-            formData.append(key, String(value))
           }
-        }
-      })
+        })
 
       if (sizes.length > 0) {
         formData.append("size", JSON.stringify(sizes))
@@ -529,8 +532,9 @@ const handleRemoveDiscount = (index: number) => {
         uploadedFiles.forEach((file) => {
           formData.append("img", file)
         })
-        console.log(formData,"formdata")
-        await createProduct(formData)
+        console.log(formData, "formdata")
+        const token = (session?.user as any)?.jwt || "";
+        await createProduct(formData, token)
         toast.success("Product added successfully")
         router.push("/products")
         reset()
@@ -543,7 +547,8 @@ const handleRemoveDiscount = (index: number) => {
         uploadedFiles.forEach((file) => {
           formData.append("imgFile", file)
         })
-        await updateProduct(params.id, formData)
+        const token = (session?.user as any)?.jwt || "";
+        await updateProduct(params.id, formData, token)
         toast.success("Product updated successfully")
         router.push("/products")
         productImages.forEach((url) => URL.revokeObjectURL(url))
@@ -574,7 +579,7 @@ const handleRemoveDiscount = (index: number) => {
         setValue("price", "")
         setContactForPrice(true) // If no price or price is 0, assume contact for price
       }
-      
+
       setValue("stock", String(data.product.stock))
       setValue("img", data.product.img)
       setValue("subCategory", data.product.subCategory)
@@ -609,7 +614,7 @@ const handleRemoveDiscount = (index: number) => {
           weight: 0,
           size: typeof option.size === 'string' ? option.size : String(option.size || ''),
         })).filter((option: any) => option.size && option.size.trim() !== '')
-        
+
         setWeightSizeOptions(formattedOptions)
         setValue("weightSizeOptions", formattedOptions)
       } else {
@@ -712,7 +717,7 @@ const handleRemoveDiscount = (index: number) => {
         </Button>
       </div>
 
-      <form 
+      <form
         id="product-form"
         onSubmit={handleSubmit(
           onSubmit,
@@ -734,7 +739,7 @@ const handleRemoveDiscount = (index: number) => {
               firstErrorField.focus()
             }
           }
-        )} 
+        )}
         className="space-y-6"
       >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -756,9 +761,8 @@ const handleRemoveDiscount = (index: number) => {
                     <input
                       id="title"
                       placeholder="Enter your product name"
-                      className={`bg-gray-50 w-full h-12 px-4 rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${
-                        errors.title ? "border-red-500" : "border-gray-200"
-                      }`}
+                      className={`bg-gray-50 w-full h-12 px-4 rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${errors.title ? "border-red-500" : "border-gray-200"
+                        }`}
                       {...register("title")}
                     />
                     {errors.title && (
@@ -772,14 +776,20 @@ const handleRemoveDiscount = (index: number) => {
                     <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-2">
                       Description <span className="text-red-500">*</span>
                     </label>
-                    <textarea
-                      id="description"
-                      placeholder="Enter your product description"
-                      className={`bg-gray-50 rounded-xl px-4 py-3 scrollbar-hide w-full border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${
-                        errors.description ? "border-red-500" : "border-gray-200"
-                      }`}
-                      rows={4}
-                      {...register("description")}
+                    <Controller
+                      name="description"
+                      control={control}
+                      rules={{ required: "Description is required" }} // Optional validation
+                      render={({ field }) => (
+                        <RichTextEditor
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          placeholder="Enter your product description"
+                          minHeight="200px"
+                          className={errors.description ? "border-red-500" : ""}
+                          editorClassName={errors.description ? "border-red-500" : ""}
+                        />
+                      )}
                     />
                     {errors.description && (
                       <p className="text-red-500 text-sm mt-1.5 flex items-center gap-1">
@@ -797,9 +807,8 @@ const handleRemoveDiscount = (index: number) => {
                         id="faces"
                         type="number"
                         placeholder="Enter product faces"
-                        className={`bg-gray-50 h-12 px-4 w-full rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${
-                          errors.faces ? "border-red-500" : "border-gray-200"
-                        }`}
+                        className={`bg-gray-50 h-12 px-4 w-full rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${errors.faces ? "border-red-500" : "border-gray-200"
+                          }`}
                         {...register("faces")}
                       />
                       {errors.faces && (
@@ -822,9 +831,8 @@ const handleRemoveDiscount = (index: number) => {
                         <Dropdown>
                           <DropdownTrigger>
                             <Button
-                              className={`capitalize w-full h-12 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
-                                errors.country ? "ring-2 ring-red-500" : "border-2 border-gray-200"
-                              } text-gray-700 text-base font-medium shadow-sm flex items-center justify-between`}
+                              className={`capitalize w-full h-12 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${errors.country ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                } text-gray-700 text-base font-medium shadow-sm flex items-center justify-between`}
                               variant="bordered"
                             >
                               <span>{field.value || "Select Country"}</span>
@@ -882,9 +890,8 @@ const handleRemoveDiscount = (index: number) => {
                             type="string"
                             placeholder="0.00"
                             disabled={contactForPrice}
-                            className={`bg-gray-50 h-12 px-4 pl-10 w-full rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${
-                              errors.price ? "border-red-500" : "border-gray-200"
-                            } ${contactForPrice ? "opacity-50 cursor-not-allowed" : ""}`}
+                            className={`bg-gray-50 h-12 px-4 pl-10 w-full rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${errors.price ? "border-red-500" : "border-gray-200"
+                              } ${contactForPrice ? "opacity-50 cursor-not-allowed" : ""}`}
                             {...register("price")}
                           />
                         </div>
@@ -915,9 +922,8 @@ const handleRemoveDiscount = (index: number) => {
                         id="stock"
                         type="number"
                         placeholder="Enter product stock"
-                        className={`bg-gray-50 h-12 px-4 w-full rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${
-                          errors.stock ? "border-red-500" : "border-gray-200"
-                        }`}
+                        className={`bg-gray-50 h-12 px-4 w-full rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor ${errors.stock ? "border-red-500" : "border-gray-200"
+                          }`}
                         {...register("stock")}
                       />
                       {errors.stock && (
@@ -941,9 +947,8 @@ const handleRemoveDiscount = (index: number) => {
                             <Dropdown>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
-                                    errors.isSale ? "ring-2 ring-red-500" : "border-2 border-gray-200"
-                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${errors.isSale ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                    } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
                                   variant="bordered"
                                 >
                                   <span>{field.value || "Select"}</span>
@@ -978,9 +983,8 @@ const handleRemoveDiscount = (index: number) => {
                             <Dropdown>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
-                                    errors.isExclusive ? "ring-2 ring-red-500" : "border-2 border-gray-200"
-                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${errors.isExclusive ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                    } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
                                   variant="bordered"
                                 >
                                   <span>{field.value || "Select"}</span>
@@ -1015,9 +1019,8 @@ const handleRemoveDiscount = (index: number) => {
                             <Dropdown>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
-                                    errors.isSpecial ? "ring-2 ring-red-500" : "border-2 border-gray-200"
-                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${errors.isSpecial ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                    } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
                                   variant="bordered"
                                 >
                                   <span>{field.value || "Select"}</span>
@@ -1052,9 +1055,8 @@ const handleRemoveDiscount = (index: number) => {
                             <Dropdown>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
-                                    errors.isTopSelling ? "ring-2 ring-red-500" : "border-2 border-gray-200"
-                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${errors.isTopSelling ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                    } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
                                   variant="bordered"
                                 >
                                   <span>{field.value || "Select"}</span>
@@ -1089,9 +1091,8 @@ const handleRemoveDiscount = (index: number) => {
                             <Dropdown>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
-                                    errors.isLabCertified ? "ring-2 ring-red-500" : "border-2 border-gray-200"
-                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${errors.isLabCertified ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                    } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
                                   variant="bordered"
                                 >
                                   <span>{field.value || "Select"}</span>
@@ -1126,9 +1127,8 @@ const handleRemoveDiscount = (index: number) => {
                             <Dropdown>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
-                                    errors.isExpertVerified ? "ring-2 ring-red-500" : "border-2 border-gray-200"
-                                  } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
+                                  className={`capitalize w-full h-11 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${errors.isExpertVerified ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                    } text-gray-700 text-sm font-medium shadow-sm flex items-center justify-between`}
                                   variant="bordered"
                                 >
                                   <span>{field.value || "Select"}</span>
@@ -1219,15 +1219,14 @@ const handleRemoveDiscount = (index: number) => {
                       {sizes.map((size, index) => (
                         <div
                           key={index}
-                          className={`bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl flex justify-between items-center border-2 transition-all duration-200 hover:shadow-md ${
-                            editingSizeIndex === index ? "border-primaryColor bg-primaryColor/5" : "border-gray-200"
-                          }`}
+                          className={`bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl flex justify-between items-center border-2 transition-all duration-200 hover:shadow-md ${editingSizeIndex === index ? "border-primaryColor bg-primaryColor/5" : "border-gray-200"
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <div className="bg-primaryColor/10 text-primaryColor px-3 py-1 rounded-lg font-semibold text-sm">
                               {size.name}
                             </div>
-                            <span className="font-medium text-gray-700">{size.price?`$${size.price}`:""}</span>
+                            <span className="font-medium text-gray-700">{size.price ? `$${size.price}` : ""}</span>
                             <span className="font-medium text-gray-600">{size.size}</span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1365,95 +1364,94 @@ const handleRemoveDiscount = (index: number) => {
               </div>
             </div> */}
 
-           <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
-  <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
-    <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-      <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
-      Discounts
-    </h2>
-  </div>
-  <div className="p-6">
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <input
-          type="text"
-          placeholder="Discount title"
-          value={discountTitle}
-          disabled={diableDiscountAdd && editingDiscountIndex === null}
-          onChange={(e) => setDiscountTitle(e.target.value)}
-          className="bg-gray-50 h-12 px-4 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-        />
-        <input
-          type="number"
-          placeholder="Percentage"
-          value={discountPercentage}
-          disabled={diableDiscountAdd && editingDiscountIndex === null}
-          onChange={(e) => setDiscountPercentage(e.target.value)}
-          className="bg-gray-50 h-12 px-4 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
-        />
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            disabled={diableDiscountAdd && editingDiscountIndex === null}
-            onClick={handleAddDiscount}
-            className="bg-primaryColor text-white h-12 flex-1 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
-          >
-            {editingDiscountIndex !== null ? "Update" : "Add Discount"}
-          </Button>
-          {editingDiscountIndex !== null && (
-            <Button
-              type="button"
-              onClick={handleCancelEditDiscount}
-              className="bg-gray-500 text-white h-12 px-4 rounded-xl hover:bg-gray-600 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
-            >
-              Cancel
-            </Button>
-          )}
-        </div>
-      </div>
-      {discounts.length > 0 ? (
-        <div className="space-y-2">
-          {discounts.map((discount, index) => (
-            <div
-              key={index}
-              className={`bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl flex justify-between items-center border-2 transition-all duration-200 hover:shadow-md ${
-                editingDiscountIndex === index ? "border-primaryColor bg-primaryColor/5" : "border-gray-200"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-primaryColor/10 text-primaryColor px-3 py-1 rounded-lg font-bold text-sm">
-                  {discount.percentage}%
-                </div>
-                <span className="font-medium text-gray-700">{discount.title}</span>
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+              <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
+                  Discounts
+                </h2>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleEditDiscount(index)}
-                  className="hover:scale-110 transition-transform bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium"
-                  disabled={editingDiscountIndex !== null && editingDiscountIndex !== index}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveDiscount(index)}
-                  className="hover:scale-110 transition-transform"
-                >
-                  <IoCloseCircle className="text-red-500" size={24} />
-                </button>
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Discount title"
+                      value={discountTitle}
+                      disabled={diableDiscountAdd && editingDiscountIndex === null}
+                      onChange={(e) => setDiscountTitle(e.target.value)}
+                      className="bg-gray-50 h-12 px-4 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Percentage"
+                      value={discountPercentage}
+                      disabled={diableDiscountAdd && editingDiscountIndex === null}
+                      onChange={(e) => setDiscountPercentage(e.target.value)}
+                      className="bg-gray-50 h-12 px-4 rounded-xl border-2 border-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primaryColor/20 focus:border-primaryColor"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        disabled={diableDiscountAdd && editingDiscountIndex === null}
+                        onClick={handleAddDiscount}
+                        className="bg-primaryColor text-white h-12 flex-1 rounded-xl hover:bg-primaryColor/90 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                      >
+                        {editingDiscountIndex !== null ? "Update" : "Add Discount"}
+                      </Button>
+                      {editingDiscountIndex !== null && (
+                        <Button
+                          type="button"
+                          onClick={handleCancelEditDiscount}
+                          className="bg-gray-500 text-white h-12 px-4 rounded-xl hover:bg-gray-600 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {discounts.length > 0 ? (
+                    <div className="space-y-2">
+                      {discounts.map((discount, index) => (
+                        <div
+                          key={index}
+                          className={`bg-gradient-to-r from-gray-50 to-white p-4 rounded-xl flex justify-between items-center border-2 transition-all duration-200 hover:shadow-md ${editingDiscountIndex === index ? "border-primaryColor bg-primaryColor/5" : "border-gray-200"
+                            }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="bg-primaryColor/10 text-primaryColor px-3 py-1 rounded-lg font-bold text-sm">
+                              {discount.percentage}%
+                            </div>
+                            <span className="font-medium text-gray-700">{discount.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleEditDiscount(index)}
+                              className="hover:scale-110 transition-transform bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium"
+                              disabled={editingDiscountIndex !== null && editingDiscountIndex !== index}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveDiscount(index)}
+                              className="hover:scale-110 transition-transform"
+                            >
+                              <IoCloseCircle className="text-red-500" size={24} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                      <p className="text-sm">No discounts added yet. Add discounts to attract customers.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-          <p className="text-sm">No discounts added yet. Add discounts to attract customers.</p>
-        </div>
-      )}
-    </div>
-  </div>
-</div>
           </div>
 
           {/* Right column - Images and Category */}
@@ -1521,9 +1519,8 @@ const handleRemoveDiscount = (index: number) => {
                             <Dropdown isDisabled={!selectedCategory}>
                               <DropdownTrigger>
                                 <Button
-                                  className={`capitalize w-full h-12 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
-                                    errors.subCategory ? "ring-2 ring-red-500" : "border-2 border-gray-200"
-                                  } text-gray-700 text-base font-medium shadow-sm flex items-center justify-between ${!selectedCategory ? "opacity-50 cursor-not-allowed" : ""}`}
+                                  className={`capitalize w-full h-12 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${errors.subCategory ? "ring-2 ring-red-500" : "border-2 border-gray-200"
+                                    } text-gray-700 text-base font-medium shadow-sm flex items-center justify-between ${!selectedCategory ? "opacity-50 cursor-not-allowed" : ""}`}
                                   variant="bordered"
                                 >
                                   <span>{field.value || "Select Sub-Category"}</span>
@@ -1541,7 +1538,7 @@ const handleRemoveDiscount = (index: number) => {
                                   field.onChange(selectedValue)
                                 }}
                               >
-                                 {subCategoryOptions.map((sub) => (
+                                {subCategoryOptions.map((sub) => (
                                   <DropdownItem key={sub.name} value={sub.name}>
                                     {sub.name}
                                   </DropdownItem>
@@ -1619,9 +1616,8 @@ const handleRemoveDiscount = (index: number) => {
                     <Dropdown isDisabled={selectedVariants.size === 0}>
                       <DropdownTrigger>
                         <Button
-                          className={`capitalize w-full h-12 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${
-                            selectedVariants.size === 0 ? "opacity-50 cursor-not-allowed" : "border-2 border-gray-200"
-                          } text-gray-700 text-base font-medium shadow-sm flex items-center justify-between`}
+                          className={`capitalize w-full h-12 bg-gray-50 hover:bg-gray-100 transition-all duration-200 ${selectedVariants.size === 0 ? "opacity-50 cursor-not-allowed" : "border-2 border-gray-200"
+                            } text-gray-700 text-base font-medium shadow-sm flex items-center justify-between`}
                           variant="bordered"
                         >
                           <span>
@@ -1686,7 +1682,7 @@ const handleRemoveDiscount = (index: number) => {
                 </div>
               </div>
             </div>
-                        <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
               <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
                 <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                   <span className="w-1.5 h-6 bg-primaryColor rounded-full"></span>
@@ -1805,13 +1801,12 @@ const handleRemoveDiscount = (index: number) => {
               <div className="space-y-4">
                 <div className="relative" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
                   <div
-                    className={`h-40 w-full rounded-xl flex flex-col items-center justify-center border-2 border-dashed transition-all duration-200 ${
-                      isDragging
+                    className={`h-40 w-full rounded-xl flex flex-col items-center justify-center border-2 border-dashed transition-all duration-200 ${isDragging
                         ? "border-primaryColor bg-primaryColor/5 scale-105"
                         : errors.img
                           ? "border-red-300 bg-red-50"
                           : "border-gray-300 bg-gray-50"
-                    }`}
+                      }`}
                   >
                     {errors.img ? (
                       <div className="text-center">
