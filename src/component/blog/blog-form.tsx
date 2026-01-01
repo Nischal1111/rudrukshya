@@ -2,21 +2,16 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
+import { Editor } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FaBold, FaItalic, FaListUl, FaListOl, FaHeading, FaImage, FaLink, FaUndo, FaRedo } from "react-icons/fa";
 import { createBlog, updateBlog, getBlogById } from "@/services/blog";
 import { toast } from "sonner";
 import NextImage from "next/image";
 import { useRouter } from "next/navigation";
 import Loader from "../Loader";
 import { RichTextEditor } from "../textEditor/text-Editor";
-import { form } from "@heroui/theme";
 
 interface Blog {
   _id?: string;
@@ -28,223 +23,6 @@ interface Blog {
   updatedAt?: string;
 }
 
-const MenuBar = ({ editor, onImageUpload }: { editor: any; onImageUpload: () => void }) => {
-  if (!editor) {
-    return null;
-  }
-
-  const addLink = () => {
-    const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("Enter link URL:", previousUrl);
-    if (url === null) {
-      return;
-    }
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
-    }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-  };
-
-  return (
-    <div className="border-b border-gray-200 p-2 flex flex-wrap gap-2 bg-gray-50">
-      {/* Text Formatting */}
-      <div className="flex gap-1 border-r border-gray-300 pr-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={(e) => {
-            e.preventDefault();
-            editor.chain().focus().toggleBold().run();
-          }}
-          disabled={!editor.can().chain().focus().toggleBold().run()}
-          className={editor.isActive("bold") ? "bg-gray-200" : ""}
-          title="Bold"
-        >
-          <FaBold className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={(e) => {
-            e.preventDefault();
-            editor.chain().focus().toggleItalic().run();
-          }}
-          disabled={!editor.can().chain().focus().toggleItalic().run()}
-          className={editor.isActive("italic") ? "bg-gray-200" : ""}
-          title="Italic"
-        >
-          <FaItalic className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Headings */}
-      <div className="flex gap-1 border-r border-gray-300 pr-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setTimeout(() => {
-              editor.chain().focus().toggleHeading({ level: 1 }).run();
-            }, 0);
-          }}
-          className={editor.isActive("heading", { level: 1 }) ? "bg-gray-200" : ""}
-          title="Heading 1"
-        >
-          <FaHeading className="h-4 w-4" /> H1
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setTimeout(() => {
-              editor.chain().focus().toggleHeading({ level: 2 }).run();
-            }, 0);
-          }}
-          className={editor.isActive("heading", { level: 2 }) ? "bg-gray-200" : ""}
-          title="Heading 2"
-        >
-          <FaHeading className="h-4 w-4" /> H2
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setTimeout(() => {
-              editor.chain().focus().toggleHeading({ level: 3 }).run();
-            }, 0);
-          }}
-          className={editor.isActive("heading", { level: 3 }) ? "bg-gray-200" : ""}
-          title="Heading 3"
-        >
-          <FaHeading className="h-4 w-4" /> H3
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setTimeout(() => {
-              editor.chain().focus().setParagraph().run();
-            }, 0);
-          }}
-          className={editor.isActive("paragraph") ? "bg-gray-200" : ""}
-          title="Paragraph"
-        >
-          P
-        </Button>
-      </div>
-
-      {/* Lists */}
-      <div className="flex gap-1 border-r border-gray-300 pr-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setTimeout(() => {
-              editor.chain().focus().toggleBulletList().run();
-            }, 0);
-          }}
-          className={editor.isActive("bulletList") ? "bg-gray-200" : ""}
-          title="Bullet List"
-        >
-          <FaListUl className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setTimeout(() => {
-              editor.chain().focus().toggleOrderedList().run();
-            }, 0);
-          }}
-          className={editor.isActive("orderedList") ? "bg-gray-200" : ""}
-          title="Numbered List"
-        >
-          <FaListOl className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Media & Links */}
-      <div className="flex gap-1 border-r border-gray-300 pr-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={(e) => {
-            e.preventDefault();
-            onImageUpload();
-          }}
-          title="Insert Image"
-        >
-          <FaImage className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={(e) => {
-            e.preventDefault();
-            addLink();
-          }}
-          className={editor.isActive("link") ? "bg-gray-200" : ""}
-          title="Insert Link"
-        >
-          <FaLink className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Undo/Redo */}
-      <div className="flex gap-1">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={(e) => {
-            e.preventDefault();
-            editor.chain().focus().undo().run();
-          }}
-          disabled={!editor.can().chain().focus().undo().run()}
-          title="Undo"
-        >
-          <FaUndo className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={(e) => {
-            e.preventDefault();
-            editor.chain().focus().redo().run();
-          }}
-          disabled={!editor.can().chain().focus().redo().run()}
-          title="Redo"
-        >
-          <FaRedo className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-};
 
 interface BlogFormProps {
   blogId?: string;
@@ -263,36 +41,9 @@ export default function BlogForm({ blogId }: BlogFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(!!blogId);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const editorImageInputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<Editor | null>(null);
   const { data: session } = useSession();
   const token = (session?.user as any)?.jwt || "";
-
-  const editor = useEditor({
-    immediatelyRender: false,
-    editable: true,
-    extensions: [
-      StarterKit,
-      Image.configure({
-        inline: true,
-        allowBase64: true,
-      }),
-      Link.configure({
-        openOnClick: false,
-      }),
-    ],
-    content: "",
-    editorProps: {
-      attributes: {
-        class: "prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4",
-      },
-    },
-  });
-
-  useEffect(() => {
-    if (blogId && editor) {
-      fetchBlog();
-    }
-  }, [blogId, editor]);
 
   const fetchBlog = async () => {
     if (!blogId) return;
@@ -301,15 +52,17 @@ export default function BlogForm({ blogId }: BlogFormProps) {
       const data = await getBlogById(blogId);
       const blog = data?.data || data;
       if (blog) {
+        // Backend uses 'thumbnail' but frontend expects 'image'
+        const imageUrl = blog.image || blog.thumbnail || "";
         setFormData({
           title: blog.title || "",
           content: blog.content || "",
-          image: blog.image || "",
+          image: imageUrl,
           author: blog.author || "",
         });
-        setImagePreview(blog.image || "");
-        if (editor) {
-          editor.commands.setContent(blog.content || "");
+        setImagePreview(imageUrl);
+        if (editorRef.current) {
+          editorRef.current.commands.setContent(blog.content || "");
         }
       }
     } catch (err: any) {
@@ -320,6 +73,37 @@ export default function BlogForm({ blogId }: BlogFormProps) {
       setLoading(false);
     }
   };
+
+  // Fetch blog when blogId is available
+  useEffect(() => {
+    if (blogId) {
+      fetchBlog();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blogId]);
+
+  // Update editor content when editor becomes ready (fallback if value prop doesn't work)
+  useEffect(() => {
+    if (blogId && editorRef.current && formData.content) {
+      const currentContent = editorRef.current.getHTML().trim();
+      const normalizedContent = formData.content.trim();
+      
+      // Only update if editor is empty and we have content (fallback for value prop)
+      if (
+        (currentContent === '' || currentContent === '<p></p>' || currentContent === '<p><br></p>') &&
+        normalizedContent !== '' && 
+        normalizedContent !== '<p></p>'
+      ) {
+        // Use a small delay to ensure editor is fully ready
+        const timer = setTimeout(() => {
+          if (editorRef.current) {
+            editorRef.current.commands.setContent(formData.content, { emitUpdate: false });
+          }
+        }, 200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [blogId, formData.content]);
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -333,50 +117,86 @@ export default function BlogForm({ blogId }: BlogFormProps) {
     }
   };
 
-  const handleEditorImageUpload = () => {
-    editorImageInputRef.current?.click();
-  };
-
-  const handleEditorImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && editor) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        editor.chain().focus().setImage({ src: base64 }).run();
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
+    // Validate title
+    if (!formData.title.trim()) {
+      toast.error("Please enter a blog title");
+      return;
+    }
 
+    // Get the latest content from the editor (always prefer editor content)
+    let finalContent = formData.content;
+    if (editorRef.current) {
+      const editorContent = editorRef.current.getHTML();
+      // Use editor content if it exists and is not empty
+      if (editorContent && editorContent.trim() !== '' && editorContent.trim() !== '<p></p>' && editorContent.trim() !== '<p><br></p>') {
+        finalContent = editorContent;
+      }
+    }
+
+    // Validate content - check if content is empty or just contains empty HTML tags
+    const contentText = finalContent.replace(/<[^>]*>/g, '').trim();
+    if (!contentText || contentText.length === 0) {
+      toast.error("Please enter blog content");
+      return;
+    }
+
+    // Validate token
+    if (!token) {
+      toast.error("You must be logged in to create a blog");
+      return;
+    }
+
+    // Calculate content size before submission
+    const contentSize = new Blob([finalContent]).size;
+    const hasBase64Images = finalContent.includes('data:image');
+    
     setIsSubmitting(true);
     try {
       let dataToSend: FormData | { title: string; content: string; author?: string; image?: string; imageUrl?: string };
 
-      // If there's an image file, use FormData
-      if (imageFile) {
+      // Check content size - if content is large (>500KB), use FormData to avoid 413 errors
+      const shouldUseFormData = imageFile || contentSize > 500 * 1024 || hasBase64Images;
+
+      if (shouldUseFormData) {
+        // Use FormData for large content or when there are images
         const formDataToSend = new FormData();
         formDataToSend.append("title", formData.title.trim());
-        formDataToSend.append("content", formData.content);
+        formDataToSend.append("content", finalContent);
         if (formData.author && formData.author.trim()) {
           formDataToSend.append("author", formData.author.trim());
         }
-        formDataToSend.append("image", imageFile);
+        if (imageFile) {
+          formDataToSend.append("image", imageFile);
+        } else if (formData.image && formData.image.trim()) {
+          // If image is base64, we should convert it to a file or use imageUrl
+          if (formData.image.startsWith('data:')) {
+            // For base64 images, send as imageUrl if possible, or include in FormData
+            // Note: Large base64 images should be uploaded separately
+            formDataToSend.append("image", formData.image);
+          } else {
+            formDataToSend.append("imageUrl", formData.image);
+          }
+        }
         dataToSend = formDataToSend;
       } else {
-        // Otherwise, send as JSON
+        // Use JSON for smaller content
         const jsonData: { title: string; content: string; author?: string; image?: string; imageUrl?: string } = {
           title: formData.title.trim(),
-          content: formData.content,
+          content: finalContent,
         };
         if (formData.author && formData.author.trim()) {
           jsonData.author = formData.author.trim();
         }
         if (formData.image && formData.image.trim()) {
           if (formData.image.startsWith('data:')) {
+            // Warn if base64 image is too large
+            const base64Size = formData.image.length;
+            if (base64Size > 100 * 1024) { // > 100KB
+              console.warn("Large base64 image detected, consider uploading separately");
+            }
             jsonData.image = formData.image;
           } else {
             jsonData.imageUrl = formData.image;
@@ -386,13 +206,19 @@ export default function BlogForm({ blogId }: BlogFormProps) {
       }
 
       // Debug logging
+      const contentSizeKB = Math.round(contentSize / 1024);
       console.log("Sending blog data:", {
         title: formData.title,
-        hasContent: !!formData.content,
-        contentLength: formData.content.length,
+        hasContent: !!finalContent,
+        contentLength: finalContent.length,
+        contentSizeKB: `${contentSizeKB} KB`,
+        contentPreview: finalContent.substring(0, 100),
+        contentFromEditor: editorRef.current ? editorRef.current.getHTML().substring(0, 100) : "N/A",
         hasAuthor: !!formData.author,
         hasImage: !!(imageFile || formData.image),
-        dataType: imageFile ? "FormData" : "JSON",
+        hasBase64Images: hasBase64Images,
+        dataType: shouldUseFormData ? "FormData" : "JSON",
+        hasToken: !!token,
       });
 
       if (blogId) {
@@ -405,10 +231,36 @@ export default function BlogForm({ blogId }: BlogFormProps) {
       router.push("/blog");
     } catch (err: any) {
       console.error("Error saving blog:", err);
-      console.error("Error response:", err?.response?.data);
-      console.error("Error status:", err?.response?.status);
-      console.error("Error headers:", err?.response?.headers);
-      const errorMessage = err?.message || err?.response?.data?.message || err?.response?.data?.error || err?.response?.data?.msg || "Failed to save blog";
+      
+      // Safely log error details
+      if (err?.response) {
+        console.error("Error response data:", err.response.data);
+        console.error("Error status:", err.response.status);
+        if (err.response.headers) {
+          try {
+            console.error("Error headers:", err.response.headers);
+          } catch (e) {
+            // Headers might not be serializable, skip logging
+          }
+        }
+      }
+      
+      // Extract error message safely
+      let errorMessage = 
+        err?.response?.data?.message || 
+        err?.response?.data?.error || 
+        err?.response?.data?.msg || 
+        err?.message || 
+        "Failed to save blog";
+      
+      // Handle 413 Payload Too Large error specifically
+      if (err?.response?.status === 413) {
+        errorMessage = "Content is too large. Please reduce image sizes or content length. " + 
+          (errorMessage !== "Failed to save blog" ? errorMessage : "");
+        console.error("Payload too large. Content size:", Math.round(contentSize / 1024), "KB");
+        console.error("Tip: Consider removing large base64 images from content or uploading images separately");
+      }
+      
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -486,12 +338,14 @@ export default function BlogForm({ blogId }: BlogFormProps) {
               Content *
             </Label>
             <RichTextEditor
+              key={blogId || "new-blog"}
               value={formData.content}
               onChange={(html) => setFormData({
                 ...formData,
                 content: html
               })}
-              placeholder="Enter event description..."
+              editorRef={editorRef}
+              placeholder="Enter blog content..."
               minHeight="300px"
             />
           </div>

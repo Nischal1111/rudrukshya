@@ -22,10 +22,6 @@ export default function BlogDetail({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchBlog();
-  }, [id]);
-
   const fetchBlog = async () => {
     try {
       setLoading(true);
@@ -44,6 +40,11 @@ export default function BlogDetail({ id }: { id: string }) {
     }
   };
 
+  useEffect(() => {
+    fetchBlog();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   if (loading) return <Loader />;
   if (!blog) return null;
 
@@ -60,10 +61,12 @@ export default function BlogDetail({ id }: { id: string }) {
         <article className="bg-white rounded-lg shadow-lg overflow-hidden">
           {blog.image && (
             <div className="relative h-96 w-full">
-              <img
-                src={blog.image.startsWith('data:') ? blog.image : blog.image}
+              <NextImage
+                src={blog.image}
                 alt={blog.title}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                unoptimized={blog.image.startsWith('data:')}
               />
             </div>
           )}

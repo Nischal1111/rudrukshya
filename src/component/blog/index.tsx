@@ -73,6 +73,7 @@ export default function BlogManagement() {
 
   useEffect(() => {
     fetchBlogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   const handleDelete = async (id: string) => {

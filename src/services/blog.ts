@@ -94,6 +94,19 @@ export const updateBlog = async (id: string, data: FormData | { title: string; c
     let res;
 
     if (data instanceof FormData) {
+      // Log what we're sending (without logging the actual file content)
+      const formDataEntries: Record<string, any> = {};
+      for (const [key, value] of data.entries()) {
+        if (value instanceof File) {
+          formDataEntries[key] = `[File: ${value.name}, ${value.size} bytes]`;
+        } else {
+          formDataEntries[key] = typeof value === 'string' && value.length > 100
+            ? value.substring(0, 100) + '...'
+            : value;
+        }
+      }
+      console.log("Updating blog with FormData:", formDataEntries);
+
       res = await axios.put(`${BASE_URL}/blog/posts/${id}`, data, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -101,6 +114,8 @@ export const updateBlog = async (id: string, data: FormData | { title: string; c
         },
       });
     } else {
+      console.log("Updating blog with JSON:", { ...data, content: data.content.substring(0, 100) + '...' });
+
       res = await axios.put(`${BASE_URL}/blog/posts/${id}`, data, {
         headers: {
           "Content-Type": "application/json",
@@ -109,11 +124,21 @@ export const updateBlog = async (id: string, data: FormData | { title: string; c
       });
     }
 
+    console.log("Blog updated successfully:", res.data);
     return res.data;
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
-      console.error("Blog update error:", err.response?.data);
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.response?.data?.msg || err.message || "An error occurred while updating the blog.";
+      console.error("Blog update error - Full error:", err);
+      console.error("Blog update error - Response data:", err.response?.data);
+      console.error("Blog update error - Response status:", err.response?.status);
+      
+      const errorMessage = 
+        err.response?.data?.message || 
+        err.response?.data?.error || 
+        err.response?.data?.msg || 
+        err.message || 
+        "An error occurred while updating the blog.";
+      
       const error = new Error(errorMessage);
       (error as any).response = err.response;
       throw error;

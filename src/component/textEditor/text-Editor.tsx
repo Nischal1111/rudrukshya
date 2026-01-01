@@ -18,6 +18,7 @@ interface RichTextEditorProps {
   editorClassName?: string
   disabled?: boolean
   showHelperText?: boolean
+  editorRef?: React.MutableRefObject<Editor | null>
 }
 
 interface MenuBarProps {
@@ -60,11 +61,8 @@ const ToolbarButton = memo(({
 ToolbarButton.displayName = "ToolbarButton"
 
 const MenuBar = memo(({ editor, onImageUpload }: MenuBarProps) => {
-  if (!editor) {
-    return null
-  }
-
   const addLink = useCallback(() => {
+    if (!editor) return
     const previousUrl = editor.getAttributes("link").href
     const url = window.prompt("Enter link URL:", previousUrl)
     
@@ -81,36 +79,314 @@ const MenuBar = memo(({ editor, onImageUpload }: MenuBarProps) => {
   }, [editor])
 
   const toggleBold = useCallback(() => {
+    if (!editor) return
     editor.chain().focus().toggleBold().run()
   }, [editor])
 
   const toggleItalic = useCallback(() => {
+    if (!editor) return
     editor.chain().focus().toggleItalic().run()
   }, [editor])
 
   const toggleHeading = useCallback((level: 1 | 2 | 3) => {
-    editor.chain().focus().toggleHeading({ level }).run()
+    if (!editor) return
+    
+    // Get selection immediately - this happens before any async operations
+    const { state } = editor
+    const { selection } = state
+    const { from, to, empty } = selection
+    
+    // Check if we have a meaningful selection
+    if (!empty && from !== to) {
+      // We have a selection - use command to only modify paragraphs in selection
+      const isActive = editor.isActive('heading', { level })
+      
+      editor
+        .chain()
+        .command(({ tr, state }) => {
+          // Get the actual selection from the transaction state
+          const { $from, $to } = state.selection
+          const start = Math.min($from.pos, $to.pos)
+          const end = Math.max($from.pos, $to.pos)
+          
+          // Find only paragraphs/headings that are within the selection
+          const nodesToModify: Array<{ pos: number; node: any }> = []
+          
+          state.doc.nodesBetween(start, end, (node, pos, parent) => {
+            // Only process top-level block nodes (direct children of doc)
+            if ((node.type.name === 'paragraph' || node.type.name === 'heading') && 
+                parent && parent.type.name === 'doc') {
+              // Check if this node is actually within our selection range
+              const nodeEnd = pos + node.nodeSize
+              if (pos >= start && nodeEnd <= end + 1) {
+                nodesToModify.push({ pos, node })
+              }
+            }
+          })
+          
+          // If no nodes found, try to find the current block
+          if (nodesToModify.length === 0) {
+            let depth = $from.depth
+            while (depth > 0) {
+              const node = $from.node(depth)
+              if (node.type.name === 'paragraph' || node.type.name === 'heading') {
+                const pos = $from.start(depth)
+                nodesToModify.push({ pos, node })
+                break
+              }
+              depth--
+            }
+          }
+          
+          // Modify only the found nodes
+          nodesToModify.forEach(({ pos, node }) => {
+            const isCurrentLevel = node.type.name === 'heading' && node.attrs.level === level
+            
+            if (isActive && isCurrentLevel) {
+              // Convert to paragraph
+              tr.setNodeMarkup(pos, state.schema.nodes.paragraph, node.attrs, node.marks)
+            } else if (!isActive) {
+              // Convert to heading
+              tr.setNodeMarkup(pos, state.schema.nodes.heading, { level }, node.marks)
+            }
+          })
+          
+          return nodesToModify.length > 0
+        })
+        .focus()
+        .run()
+    } else {
+      // No selection - only affect current paragraph
+      const isActive = editor.isActive('heading', { level })
+      if (isActive) {
+        editor.chain().focus().setParagraph().run()
+      } else {
+        editor.chain().focus().setHeading({ level }).run()
+      }
+    }
   }, [editor])
 
   const setParagraph = useCallback(() => {
+    if (!editor) return
+    // setParagraph only affects selected paragraphs or current paragraph
     editor.chain().focus().setParagraph().run()
   }, [editor])
 
   const toggleBulletList = useCallback(() => {
-    editor.chain().focus().toggleBulletList().run()
+    if (!editor) return
+    
+    const { state } = editor
+    const { selection } = state
+    const { from, to, empty } = selection
+    
+    // Check if we're in a bullet list
+    const isActive = editor.isActive('bulletList')
+    
+    if (isActive) {
+      // If in a list, lift out of list
+      if (!empty && from !== to) {
+        // For selection, lift list items in selection only
+        editor
+          .chain()
+          .command(({ tr, state }) => {
+            const { $from, $to } = state.selection
+            const start = Math.min($from.pos, $to.pos)
+            const end = Math.max($from.pos, $to.pos)
+            let modified = false
+            
+            // Find list items in selection and convert them to paragraphs
+            const itemsToLift: Array<{ pos: number; node: any }> = []
+            
+            state.doc.nodesBetween(start, end, (node, pos) => {
+              if (node.type.name === 'listItem') {
+                const resolvedPos = state.doc.resolve(pos)
+                const depth = resolvedPos.depth
+                const itemStart = resolvedPos.start(depth)
+                const itemEnd = itemStart + node.nodeSize
+                
+                // Only lift if this list item is within our selection
+                if (itemStart >= start && itemEnd <= end + 1) {
+                  itemsToLift.push({ pos: itemStart, node })
+                }
+              }
+            })
+            
+            // Process in reverse to maintain positions
+            itemsToLift.reverse().forEach(({ pos, node }) => {
+              const paragraph = node.content.firstChild
+              if (paragraph && (paragraph.type.name === 'paragraph' || paragraph.type.name === 'heading')) {
+                tr.replaceWith(pos, pos + node.nodeSize, paragraph)
+                modified = true
+              }
+            })
+            
+            return modified
+          })
+          .focus()
+          .run()
+      } else {
+        // No selection, just lift current item
+        editor.chain().focus().liftListItem('listItem').run()
+      }
+    } else {
+      // Not in a list - wrap selection or current paragraph in bullet list
+      if (!empty && from !== to) {
+        // Has selection - wrap only selected paragraphs
+        editor
+          .chain()
+          .command(({ tr, state }) => {
+            const { $from, $to } = state.selection
+            const start = Math.min($from.pos, $to.pos)
+            const end = Math.max($from.pos, $to.pos)
+            let modified = false
+            
+            // Find paragraphs in selection
+            const paragraphs: Array<{ pos: number; node: any }> = []
+            
+            state.doc.nodesBetween(start, end, (node, pos, parent) => {
+              if ((node.type.name === 'paragraph' || node.type.name === 'heading') && 
+                  parent && parent.type.name === 'doc') {
+                const nodeEnd = pos + node.nodeSize
+                // Only wrap if this paragraph is within our selection
+                if (pos >= start && nodeEnd <= end + 1) {
+                  paragraphs.push({ pos, node })
+                }
+              }
+            })
+            
+            // Wrap each paragraph in a bullet list (process in reverse)
+            paragraphs.reverse().forEach(({ pos, node }) => {
+              const listItem = state.schema.nodes.listItem.create({}, node)
+              const bulletList = state.schema.nodes.bulletList.create({}, listItem)
+              tr.replaceWith(pos, pos + node.nodeSize, bulletList)
+              modified = true
+            })
+            
+            return modified
+          })
+          .focus()
+          .run()
+      } else {
+        // No selection, wrap current paragraph
+        editor.chain().focus().toggleBulletList().run()
+      }
+    }
   }, [editor])
 
   const toggleOrderedList = useCallback(() => {
-    editor.chain().focus().toggleOrderedList().run()
+    if (!editor) return
+    
+    const { state } = editor
+    const { selection } = state
+    const { from, to, empty } = selection
+    
+    // Check if we're in an ordered list
+    const isActive = editor.isActive('orderedList')
+    
+    if (isActive) {
+      // If in a list, lift out of list
+      if (!empty && from !== to) {
+        // For selection, lift list items in selection only
+        editor
+          .chain()
+          .command(({ tr, state }) => {
+            const { $from, $to } = state.selection
+            const start = Math.min($from.pos, $to.pos)
+            const end = Math.max($from.pos, $to.pos)
+            let modified = false
+            
+            // Find list items in selection and convert them to paragraphs
+            const itemsToLift: Array<{ pos: number; node: any }> = []
+            
+            state.doc.nodesBetween(start, end, (node, pos) => {
+              if (node.type.name === 'listItem') {
+                const resolvedPos = state.doc.resolve(pos)
+                const depth = resolvedPos.depth
+                const itemStart = resolvedPos.start(depth)
+                const itemEnd = itemStart + node.nodeSize
+                
+                // Only lift if this list item is within our selection
+                if (itemStart >= start && itemEnd <= end + 1) {
+                  itemsToLift.push({ pos: itemStart, node })
+                }
+              }
+            })
+            
+            // Process in reverse to maintain positions
+            itemsToLift.reverse().forEach(({ pos, node }) => {
+              const paragraph = node.content.firstChild
+              if (paragraph && (paragraph.type.name === 'paragraph' || paragraph.type.name === 'heading')) {
+                tr.replaceWith(pos, pos + node.nodeSize, paragraph)
+                modified = true
+              }
+            })
+            
+            return modified
+          })
+          .focus()
+          .run()
+      } else {
+        // No selection, just lift current item
+        editor.chain().focus().liftListItem('listItem').run()
+      }
+    } else {
+      // Not in a list - wrap selection or current paragraph in ordered list
+      if (!empty && from !== to) {
+        // Has selection - wrap only selected paragraphs
+        editor
+          .chain()
+          .command(({ tr, state }) => {
+            const { $from, $to } = state.selection
+            const start = Math.min($from.pos, $to.pos)
+            const end = Math.max($from.pos, $to.pos)
+            let modified = false
+            
+            // Find paragraphs in selection
+            const paragraphs: Array<{ pos: number; node: any }> = []
+            
+            state.doc.nodesBetween(start, end, (node, pos, parent) => {
+              if ((node.type.name === 'paragraph' || node.type.name === 'heading') && 
+                  parent && parent.type.name === 'doc') {
+                const nodeEnd = pos + node.nodeSize
+                // Only wrap if this paragraph is within our selection
+                if (pos >= start && nodeEnd <= end + 1) {
+                  paragraphs.push({ pos, node })
+                }
+              }
+            })
+            
+            // Wrap each paragraph in an ordered list (process in reverse)
+            paragraphs.reverse().forEach(({ pos, node }) => {
+              const listItem = state.schema.nodes.listItem.create({}, node)
+              const orderedList = state.schema.nodes.orderedList.create({}, listItem)
+              tr.replaceWith(pos, pos + node.nodeSize, orderedList)
+              modified = true
+            })
+            
+            return modified
+          })
+          .focus()
+          .run()
+      } else {
+        // No selection, wrap current paragraph
+        editor.chain().focus().toggleOrderedList().run()
+      }
+    }
   }, [editor])
 
   const undo = useCallback(() => {
+    if (!editor) return
     editor.chain().focus().undo().run()
   }, [editor])
 
   const redo = useCallback(() => {
+    if (!editor) return
     editor.chain().focus().redo().run()
   }, [editor])
+
+  if (!editor) {
+    return null
+  }
 
   return (
     <div className="border border-gray-300 border-b-0 p-2 flex flex-wrap gap-2 bg-gray-50 rounded-t-md sticky top-0 z-10">
@@ -231,13 +507,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = memo(({
   editorClassName = "",
   disabled = false,
   showHelperText = true,
+  editorRef,
 }) => {
   const imageInputRef = useRef<HTMLInputElement>(null)
   const isUpdatingRef = useRef(false)
+  const lastContentRef = useRef<string>("")
+  const editorIdRef = useRef<string>(`editor-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`)
 
   const editor = useEditor({
     immediatelyRender: false,
     editable: !disabled,
+    autofocus: false,
     extensions: [
       StarterKit.configure({
         bulletList: {
@@ -294,6 +574,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = memo(({
     content: value,
     editorProps: {
       attributes: {
+        'data-editor-id': editorIdRef.current,
         class: `prose prose-sm max-w-none focus:outline-none p-4 ${editorClassName}`,
         style: `min-height: ${minHeight}`,
       },
@@ -301,26 +582,73 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = memo(({
     onUpdate: ({ editor }) => {
       if (!isUpdatingRef.current) {
         const html = editor.getHTML()
+        lastContentRef.current = html.trim()
         onChange?.(html)
       }
     },
   })
 
-  // Update editor content when value prop changes
+  // Update editorRef when editor is ready
   useEffect(() => {
-    if (editor && value !== undefined && value !== editor.getHTML()) {
-      isUpdatingRef.current = true
-      const { from } = editor.state.selection
-      editor.commands.setContent(value)
+    if (editorRef && editor) {
+      editorRef.current = editor
+    }
+  }, [editor, editorRef])
+
+  // Update editor content when value prop changes (only from external source)
+  useEffect(() => {
+    if (editor && value !== undefined) {
+      const currentContent = editor.getHTML()
+      const normalizedValue = value.trim() || ""
+      const normalizedCurrent = currentContent.trim() || ""
       
-      // Restore cursor position
-      try {
-        editor.commands.focus(from)
-      } catch (e) {
-        editor.commands.focus('end')
+      // Check if editor is empty (just initialized or reset)
+      const isEditorEmpty = normalizedCurrent === "" || normalizedCurrent === "<p></p>" || normalizedCurrent === "<p><br></p>"
+      const isValueEmpty = normalizedValue === "" || normalizedValue === "<p></p>" || normalizedValue === "<p><br></p>"
+      
+      // Only update if:
+      // 1. Value is different from current content
+      // 2. We're not currently updating (to prevent loops)
+      // 3. Either:
+      //    - Editor is empty and we have content (for initial load/edit mode)
+      //    - Value is different from last known content (to allow external updates, but avoid editor's own changes)
+      if (
+        normalizedValue !== normalizedCurrent && 
+        !isUpdatingRef.current &&
+        ((isEditorEmpty && !isValueEmpty) || normalizedValue !== lastContentRef.current)
+      ) {
+        isUpdatingRef.current = true
+        
+        // Save selection before updating
+        const { from, to } = editor.state.selection
+        
+        // Update content
+        editor.commands.setContent(value, { emitUpdate: false })
+        
+        // Restore selection after content is updated
+        requestAnimationFrame(() => {
+          try {
+            const newDoc = editor.state.doc
+            const safeFrom = Math.min(from, newDoc.content.size)
+            const safeTo = Math.min(to, newDoc.content.size)
+            
+            if (safeFrom >= 0 && safeTo >= safeFrom && safeTo <= newDoc.content.size) {
+              editor.commands.setTextSelection({ from: safeFrom, to: safeTo })
+            } else if (safeFrom >= 0 && safeFrom <= newDoc.content.size) {
+              editor.commands.setTextSelection({ from: safeFrom, to: safeFrom })
+            } else {
+              editor.commands.focus('end')
+            }
+          } catch (e) {
+            // If selection restoration fails, just focus at end
+            editor.commands.focus('end')
+          }
+          
+          isUpdatingRef.current = false
+        })
+        
+        lastContentRef.current = normalizedValue
       }
-      
-      isUpdatingRef.current = false
     }
   }, [value, editor])
 
@@ -330,6 +658,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = memo(({
       editor.setEditable(!disabled)
     }
   }, [disabled, editor])
+
+  // Cleanup editor on unmount
+  useEffect(() => {
+    return () => {
+      if (editor) {
+        editor.destroy()
+      }
+    }
+  }, [editor])
 
   const handleImageUpload = useCallback(() => {
     imageInputRef.current?.click()
