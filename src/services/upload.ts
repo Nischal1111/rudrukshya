@@ -1,9 +1,9 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export const createUpload = async (data: any, token: string) => {
     try {
-        const res = await axios.post(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/upload/uploads`,
+        const res = await api.post(
+            `/upload/uploads`,
             data,
             {
                 headers: {
@@ -23,8 +23,8 @@ export const createUpload = async (data: any, token: string) => {
 
 export const deleteUpload = async (id: string, token: string) => {
     try {
-        const res = await axios.delete(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/upload/uploads/${id}`,
+        const res = await api.delete(
+            `/upload/uploads/${id}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -43,8 +43,8 @@ export const deleteUpload = async (id: string, token: string) => {
 
 export const addMedia = async (id: string, data: any, token: string) => {
     try {
-        const res = await axios.post(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/upload/uploads/${id}/media`,
+        const res = await api.post(
+            `/upload/uploads/${id}/media`,
             data,
             {
                 headers: {
@@ -64,8 +64,8 @@ export const addMedia = async (id: string, data: any, token: string) => {
 
 export const removeMedia = async (id: string, mediaId: string, token: string) => {
     try {
-        const res = await axios.delete(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/upload/uploads/${id}/media/${mediaId}`,
+        const res = await api.delete(
+            `/upload/uploads/${id}/media/${mediaId}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -84,8 +84,8 @@ export const removeMedia = async (id: string, mediaId: string, token: string) =>
 
 export const updateMedia = async (id: string, mediaId: string, data: any, token: string) => {
     try {
-        const res = await axios.patch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/upload/uploads/${id}/media/${mediaId}`,
+        const res = await api.patch(
+            `/upload/uploads/${id}/media/${mediaId}`,
             data,
             {
                 headers: {

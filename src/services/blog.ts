@@ -1,6 +1,5 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 // Backend routes (mounted at /blog):
 // GET    /blog/Blogs
@@ -10,7 +9,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 // DELETE /blog/posts/:id
 export const getBlogs = async (page: number = 1, limit: number = 10) => {
   try {
-    const res = await axios.get(`${BASE_URL}/blog/Blogs?page=${page}&limit=${limit}`);
+    const res = await api.get(`/blog/Blogs?page=${page}&limit=${limit}`);
     return res.data;
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
@@ -22,7 +21,7 @@ export const getBlogs = async (page: number = 1, limit: number = 10) => {
 
 export const getBlogById = async (id: string) => {
   try {
-    const res = await axios.get(`${BASE_URL}/blog/posts/${id}`);
+    const res = await api.get(`/blog/posts/${id}`);
     return res.data;
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
@@ -50,7 +49,7 @@ export const createBlog = async (data: FormData | { title: string; content: stri
       }
       console.log("Creating blog with FormData:", formDataEntries);
 
-      res = await axios.post(`${BASE_URL}/blog/posts`, data, {
+      res = await api.post(`/blog/posts`, data, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
@@ -59,7 +58,7 @@ export const createBlog = async (data: FormData | { title: string; content: stri
     } else {
       console.log("Creating blog with JSON:", { ...data, content: data.content.substring(0, 100) + '...' });
 
-      res = await axios.post(`${BASE_URL}/blog/posts`, data, {
+      res = await api.post(`/blog/posts`, data, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -107,7 +106,7 @@ export const updateBlog = async (id: string, data: FormData | { title: string; c
       }
       console.log("Updating blog with FormData:", formDataEntries);
 
-      res = await axios.put(`${BASE_URL}/blog/posts/${id}`, data, {
+      res = await api.put(`/blog/posts/${id}`, data, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
@@ -116,7 +115,7 @@ export const updateBlog = async (id: string, data: FormData | { title: string; c
     } else {
       console.log("Updating blog with JSON:", { ...data, content: data.content.substring(0, 100) + '...' });
 
-      res = await axios.put(`${BASE_URL}/blog/posts/${id}`, data, {
+      res = await api.put(`/blog/posts/${id}`, data, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -131,14 +130,14 @@ export const updateBlog = async (id: string, data: FormData | { title: string; c
       console.error("Blog update error - Full error:", err);
       console.error("Blog update error - Response data:", err.response?.data);
       console.error("Blog update error - Response status:", err.response?.status);
-      
-      const errorMessage = 
-        err.response?.data?.message || 
-        err.response?.data?.error || 
-        err.response?.data?.msg || 
-        err.message || 
+
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.response?.data?.msg ||
+        err.message ||
         "An error occurred while updating the blog.";
-      
+
       const error = new Error(errorMessage);
       (error as any).response = err.response;
       throw error;
@@ -149,7 +148,7 @@ export const updateBlog = async (id: string, data: FormData | { title: string; c
 
 export const deleteBlog = async (id: string, token: string) => {
   try {
-    const res = await axios.delete(`${BASE_URL}/blog/posts/${id}`, {
+    const res = await api.delete(`/blog/posts/${id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

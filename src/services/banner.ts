@@ -1,9 +1,9 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export const getBanners = async () => {
   try {
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/banner/get`
+    const res = await api.get(
+      `/banner/get`
     );
     return res.data;
   } catch (err: unknown) {
@@ -17,8 +17,8 @@ export const getBanners = async () => {
 
 export const getBannerByName = async (name: string) => {
   try {
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/banner/get/${name}`
+    const res = await api.get(
+      `/banner/get/${name}`
     );
     return res.data;
   } catch (err: unknown) {
@@ -49,8 +49,8 @@ export const createBanner = async (name: string, files: File[], youtubeLinks: st
       });
     }
 
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/banner/create`,
+    const res = await api.post(
+      `/banner/create`,
       formData,
       {
         headers: {
@@ -84,8 +84,8 @@ export const updateBanner = async (name: string, files: File[], youtubeLinks: st
       });
     }
 
-    const res = await axios.put(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/banner/update`,
+    const res = await api.put(
+      `/banner/update`,
       formData,
       {
         headers: {
@@ -106,8 +106,8 @@ export const updateBanner = async (name: string, files: File[], youtubeLinks: st
 
 export const deleteBannerImage = async (name: string, imageUrl: string, token: string) => {
   try {
-    const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/banner/delete`,
+    const res = await api.delete(
+      `/banner/delete`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

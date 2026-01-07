@@ -1,4 +1,4 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export interface BankQR {
   _id?: string;
@@ -89,8 +89,8 @@ export const createOrUpdatePersonalInfo = async (data: {
       });
     }
 
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/create-or-update`,
+    const res = await api.post(
+      `/personal-info/create-or-update`,
       formData,
       {
         headers: {
@@ -114,8 +114,8 @@ export const updateFonePayQR = async (qrCode: File, token: string) => {
     const formData = new FormData();
     formData.append("fonepayQR", qrCode);
 
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/fonepay-qr`,
+    const res = await api.post(
+      `/personal-info/fonepay-qr`,
       formData,
       {
         headers: {
@@ -158,8 +158,8 @@ export const addBankQR = async (data: {
       formData.append("qrCode", data.qrCode);
     }
 
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/bank-qr`,
+    const res = await api.post(
+      `/personal-info/bank-qr`,
       formData,
       {
         headers: {
@@ -193,8 +193,8 @@ export const updateBankQR = async (id: string, data: {
     if (data.swiftCode !== undefined) formData.append("swiftCode", data.swiftCode || "");
     if (data.qrCode) formData.append("qrCode", data.qrCode);
 
-    const res = await axios.put(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/bank-qr/${id}`,
+    const res = await api.put(
+      `/personal-info/bank-qr/${id}`,
       formData,
       {
         headers: {
@@ -215,8 +215,8 @@ export const updateBankQR = async (id: string, data: {
 
 export const deleteBankQR = async (id: string, token: string) => {
   try {
-    const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/bank-qr/${id}`,
+    const res = await api.delete(
+      `/personal-info/bank-qr/${id}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -239,8 +239,8 @@ export const updateEsewaQR = async (qrCode: File, token: string) => {
     const formData = new FormData();
     formData.append("esewaQR", qrCode);
 
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/esewa-qr`,
+    const res = await api.post(
+      `/personal-info/esewa-qr`,
       formData,
       {
         headers: {
@@ -270,8 +270,8 @@ export const updateKhaltiQR = async (qrCode: File, token: string) => {
     const formData = new FormData();
     formData.append("khaltiQR", qrCode);
 
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/khalti-qr`,
+    const res = await api.post(
+      `/personal-info/khalti-qr`,
       formData,
       {
         headers: {
@@ -322,8 +322,8 @@ export const updateShippingFees = async (fees: {
   otherInternational: number;
 }, token: string) => {
   try {
-    const res = await axios.put(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/personal-info/shipping-fees`,
+    const res = await api.put(
+      `/personal-info/shipping-fees`,
       fees,
       {
         headers: {

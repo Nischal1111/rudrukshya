@@ -1,9 +1,9 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export const getDashboardStats = async (token: string) => {
     try {
-        const res = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/stats`,
+        const res = await api.get(
+            `/dashboard/stats`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,

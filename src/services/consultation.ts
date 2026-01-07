@@ -1,9 +1,9 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export const getConsultation = async (page: number, limit: number, token: string) => {
   try {
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/consultation/get?page=${page}&limit=${limit}`,
+    const res = await api.get(
+      `/consultation/get?page=${page}&limit=${limit}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -22,8 +22,8 @@ export const getConsultation = async (page: number, limit: number, token: string
 
 export const deleteConsultation = async (id: string, token: string) => {
   try {
-    const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/consultation/delete/${id}`,
+    const res = await api.delete(
+      `/consultation/delete/${id}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

@@ -1,9 +1,9 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export const getAllOrders = async (page: number, limit: number, token: string) => {
     try {
-        const res = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/order/all?page=${page}&limit=${limit}`,
+        const res = await api.get(
+            `/order/all?page=${page}&limit=${limit}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -22,8 +22,8 @@ export const getAllOrders = async (page: number, limit: number, token: string) =
 
 export const editOrder = async (id: string, data: any, token: string) => {
     try {
-        const res = await axios.put(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/order/${id}`,
+        const res = await api.put(
+            `/order/${id}`,
             data,
             {
                 headers: {
@@ -43,8 +43,8 @@ export const editOrder = async (id: string, data: any, token: string) => {
 
 export const updateOrderStatus = async (id: string, status: string, token: string) => {
     try {
-        const res = await axios.patch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/order/${id}/status`,
+        const res = await api.patch(
+            `/order/${id}/status`,
             { status },
             {
                 headers: {
@@ -64,8 +64,8 @@ export const updateOrderStatus = async (id: string, status: string, token: strin
 
 export const updatePaymentStatus = async (id: string, status: string, token: string) => {
     try {
-        const res = await axios.patch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/order/${id}/payment`,
+        const res = await api.patch(
+            `/order/${id}/payment`,
             { status },
             {
                 headers: {
@@ -85,8 +85,8 @@ export const updatePaymentStatus = async (id: string, status: string, token: str
 
 export const deleteOrder = async (id: string, token: string) => {
     try {
-        const res = await axios.delete(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/order/${id}`,
+        const res = await api.delete(
+            `/order/${id}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,

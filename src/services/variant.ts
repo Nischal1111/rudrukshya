@@ -1,9 +1,9 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export const createVariant = async (data: any, token: string) => {
     try {
-        const res = await axios.post(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/variant/create`,
+        const res = await api.post(
+            `/variant/create`,
             data,
             {
                 headers: {
@@ -23,8 +23,8 @@ export const createVariant = async (data: any, token: string) => {
 
 export const updateVariant = async (id: string, data: any, token: string) => {
     try {
-        const res = await axios.put(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/variant/update/${id}`,
+        const res = await api.put(
+            `/variant/update/${id}`,
             data,
             {
                 headers: {
@@ -44,8 +44,8 @@ export const updateVariant = async (id: string, data: any, token: string) => {
 
 export const deleteVariant = async (id: string, token: string) => {
     try {
-        const res = await axios.delete(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/variant/delete/${id}`,
+        const res = await api.delete(
+            `/variant/delete/${id}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,

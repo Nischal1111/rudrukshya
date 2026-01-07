@@ -87,6 +87,12 @@ const BANNER_SECTIONS: BannerSection[] = [
     type: "page",
     description: "Must have exactly 1 image OR 1 video file OR 1 YouTube link. Recommended aspect ratio: 1200:500",
   },
+  {
+    name: "blog",
+    displayName: "Blog Page Banner",
+    type: "page",
+    description: "Must have exactly 1 image OR 1 video file OR 1 YouTube link. Recommended aspect ratio: 1200:500",
+  },
 ];
 
 export default function BannerManagement() {

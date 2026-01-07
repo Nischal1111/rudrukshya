@@ -1,9 +1,9 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export const getAllCategories = async () => {
   try {
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/category/get`
+    const res = await api.get(
+      `/category/get`
     );
     return res.data;
   } catch (err: unknown) {
@@ -17,8 +17,8 @@ export const getAllCategories = async () => {
 
 export const createSubCategory = async (id: string, name: string, token: string) => {
   try {
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/category/create/subCategory/${id}`,
+    const res = await api.post(
+      `/category/create/subCategory/${id}`,
       { name: name },
       {
         headers: {
@@ -38,8 +38,8 @@ export const createSubCategory = async (id: string, name: string, token: string)
 
 export const deleteSubCategory = async (id: string, token: string) => {
   try {
-    const res = await axios.patch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/category/delete/${id}`,
+    const res = await api.patch(
+      `/category/delete/${id}`,
       {},
       {
         headers: {
@@ -59,8 +59,8 @@ export const deleteSubCategory = async (id: string, token: string) => {
 
 export const createSubCategoryByName = async (categoryName: string, name: string, token: string) => {
   try {
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/category/create/subCategory/byName/${categoryName}`,
+    const res = await api.post(
+      `/category/create/subCategory/byName/${categoryName}`,
       { name: name },
       {
         headers: {

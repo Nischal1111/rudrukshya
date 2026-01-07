@@ -1,4 +1,4 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 // Get all events with optional pagination and filter
 export const getAllEvents = async (page: number = 1, limit: number = 1, isActive?: boolean) => {
@@ -10,8 +10,8 @@ export const getAllEvents = async (page: number = 1, limit: number = 1, isActive
       params.append("isActive", isActive.toString());
     }
 
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/event/get?${params.toString()}`
+    const res = await api.get(
+      `/event/get?${params.toString()}`
     );
     return res.data;
   } catch (err: unknown) {
@@ -26,8 +26,8 @@ export const getAllEvents = async (page: number = 1, limit: number = 1, isActive
 // Get single event by ID
 export const getEventById = async (id: string) => {
   try {
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${id}`
+    const res = await api.get(
+      `/event/events/${id}`
     );
     return res.data;
   } catch (err: unknown) {
@@ -42,8 +42,8 @@ export const getEventById = async (id: string) => {
 // Create new event (requires FormData with bannerPopUpImage and bannerImage files)
 export const createEvent = async (data: FormData, token: string) => {
   try {
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/event/create`,
+    const res = await api.post(
+      `/event/create`,
       data,
       {
         headers: {
@@ -74,8 +74,8 @@ export const updateEvent = async (id: string, data: FormData | any, token: strin
       config.headers["Content-Type"] = "multipart/form-data";
     }
 
-    const res = await axios.put(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${id}`,
+    const res = await api.put(
+      `/event/events/${id}`,
       data,
       config
     );
@@ -92,8 +92,8 @@ export const updateEvent = async (id: string, data: FormData | any, token: strin
 // Toggle event active status
 export const toggleEventStatus = async (id: string, token: string) => {
   try {
-    const res = await axios.patch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${id}/toggle-status`,
+    const res = await api.patch(
+      `/event/events/${id}/toggle-status`,
       {},
       {
         headers: {
@@ -114,8 +114,8 @@ export const toggleEventStatus = async (id: string, token: string) => {
 // Delete event
 export const deleteEvent = async (id: string, token: string) => {
   try {
-    const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${id}`,
+    const res = await api.delete(
+      `/event/events/${id}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -135,8 +135,8 @@ export const deleteEvent = async (id: string, token: string) => {
 // Add products to event
 export const addProductsToEvent = async (eventId: string, productIds: string[], token: string) => {
   try {
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${eventId}/products`,
+    const res = await api.post(
+      `/event/events/${eventId}/products`,
       { products: productIds },
       {
         headers: {
@@ -157,8 +157,8 @@ export const addProductsToEvent = async (eventId: string, productIds: string[], 
 // Remove products from event
 export const removeProductsFromEvent = async (eventId: string, productIds: string[], token: string) => {
   try {
-    const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/event/events/${eventId}/products`,
+    const res = await api.delete(
+      `/event/events/${eventId}/products`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

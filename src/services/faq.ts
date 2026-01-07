@@ -1,9 +1,9 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export const getFAQs = async () => {
   try {
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/faq`
+    const res = await api.get(
+      `/faq`
     );
     return res.data;
   } catch (err: unknown) {
@@ -17,8 +17,8 @@ export const getFAQs = async () => {
 
 export const getFAQById = async (id: string) => {
   try {
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/faq/${id}`
+    const res = await api.get(
+      `/faq/${id}`
     );
     return res.data;
   } catch (err: unknown) {
@@ -32,8 +32,8 @@ export const getFAQById = async (id: string) => {
 
 export const createFAQ = async (data: { question: string; answer: string }, token: string) => {
   try {
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/faq`,
+    const res = await api.post(
+      `/faq`,
       data,
       {
         headers: {
@@ -53,8 +53,8 @@ export const createFAQ = async (data: { question: string; answer: string }, toke
 
 export const updateFAQ = async (id: string, data: { question: string; answer: string }, token: string) => {
   try {
-    const res = await axios.put(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/faq/${id}`,
+    const res = await api.put(
+      `/faq/${id}`,
       data,
       {
         headers: {
@@ -74,8 +74,8 @@ export const updateFAQ = async (id: string, data: { question: string; answer: st
 
 export const deleteFAQ = async (id: string, token: string) => {
   try {
-    const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/faq/${id}`,
+    const res = await api.delete(
+      `/faq/${id}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

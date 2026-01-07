@@ -1,9 +1,9 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export const createPromocode = async (data: any, token: string) => {
     try {
-        const res = await axios.post(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/promocode/create`,
+        const res = await api.post(
+            `/promocode/create`,
             data,
             {
                 headers: {
@@ -23,8 +23,8 @@ export const createPromocode = async (data: any, token: string) => {
 
 export const deletePromocode = async (id: string, token: string) => {
     try {
-        const res = await axios.delete(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/promocode/delete/${id}`,
+        const res = await api.delete(
+            `/promocode/delete/${id}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -43,8 +43,8 @@ export const deletePromocode = async (id: string, token: string) => {
 
 export const updatePromocode = async (id: string, data: any, token: string) => {
     try {
-        const res = await axios.patch(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/promocode/update/${id}`,
+        const res = await api.patch(
+            `/promocode/update/${id}`,
             data,
             {
                 headers: {
@@ -64,8 +64,8 @@ export const updatePromocode = async (id: string, data: any, token: string) => {
 
 export const listPromocodes = async (token: string) => {
     try {
-        const res = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_URL}/promocode/list`,
+        const res = await api.get(
+            `/promocode/list`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,

@@ -1,9 +1,9 @@
-import axios from "axios";
+import api, { axios } from "./api";
 
 export const getContacts = async (token: string) => {
   try {
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/contact`,
+    const res = await api.get(
+      `/contact`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -22,8 +22,8 @@ export const getContacts = async (token: string) => {
 
 export const getContactById = async (id: string, token: string) => {
   try {
-    const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/contact/${id}`,
+    const res = await api.get(
+      `/contact/${id}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -55,8 +55,8 @@ export const createContact = async (data: { location: string; phone: string; ema
     }
 
     console.log("Creating contact with payload:", payload);
-    const res = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/contact`,
+    const res = await api.post(
+      `/contact`,
       payload,
       {
         headers: {
@@ -93,8 +93,8 @@ export const updateContact = async (id: string, data: { location: string; phone:
     }
 
     console.log("Updating contact with ID:", id, "payload:", payload);
-    const res = await axios.put(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/contact/${id}`,
+    const res = await api.put(
+      `/contact/${id}`,
       payload,
       {
         headers: {
@@ -118,8 +118,8 @@ export const updateContact = async (id: string, data: { location: string; phone:
 
 export const deleteContact = async (id: string, token: string) => {
   try {
-    const res = await axios.delete(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/contact/${id}`,
+    const res = await api.delete(
+      `/contact/${id}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
