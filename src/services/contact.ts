@@ -136,3 +136,38 @@ export const deleteContact = async (id: string, token: string) => {
   }
 };
 
+// Submit contact form (public endpoint, no token required)
+export const submitContactForm = async (data: { name: string; email: string; phone?: string; message: string }) => {
+  try {
+    const payload = {
+      name: String(data.name || "").trim(),
+      email: String(data.email || "").trim(),
+      phone: data.phone ? String(data.phone).trim() : "",
+      message: String(data.message || "").trim(),
+    };
+
+    // Validate required fields
+    if (!payload.name || !payload.email || !payload.message) {
+      throw new Error("Name, email, and message are required");
+    }
+
+    const res = await api.post(
+      `/contact/submit`,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return res.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      const errorMessage = err.response?.data?.message || err.message;
+      throw new Error(errorMessage);
+    } else {
+      throw new Error("An unexpected error occurred");
+    }
+  }
+};
+

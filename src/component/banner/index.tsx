@@ -76,12 +76,6 @@ const BANNER_SECTIONS: BannerSection[] = [
     description: "Must have exactly 1 image OR 1 video file OR 1 YouTube link. Recommended aspect ratio: 1200:500",
   },
   {
-    name: "consultation",
-    displayName: "Consultation Page Banner",
-    type: "page",
-    description: "Must have exactly 1 image OR 1 video file OR 1 YouTube link. Recommended aspect ratio: 1200:500",
-  },
-  {
     name: "contact",
     displayName: "Contact Page Banner",
     type: "page",
