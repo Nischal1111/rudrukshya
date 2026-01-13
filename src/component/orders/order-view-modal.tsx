@@ -45,6 +45,16 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
               <h3 className="font-semibold text-foreground mb-3">Customer Information</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
+                  <p className="text-muted-foreground">Order Type</p>
+                  <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${
+                    (order?.orderType || (order?.userId ? 'user' : 'guest')) === 'user' 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {(order?.orderType || (order?.userId ? 'user' : 'guest')) === 'user' ? 'User' : 'Guest'}
+                  </span>
+                </div>
+                <div>
                   <p className="text-muted-foreground">Name</p>
                   <p className="font-medium">{order.fullname}</p>
                 </div>

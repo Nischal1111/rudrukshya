@@ -92,6 +92,7 @@ export default function OrdersTable({ filters, page, onPageChange }: OrdersTable
           <TableHeader>
             <TableRow>
               <TableHead>Order ID</TableHead>
+              <TableHead>Order Type</TableHead>
               <TableHead>Customer Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>

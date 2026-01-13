@@ -35,9 +35,17 @@ export default function OrderTableRow({ order, onView, onEdit, onDelete }: Order
   const orderStatusBadge = getStatusBadge(order?.orderStatus)
   const paymentStatusBadge = getStatusBadge(order?.paymentStatus)
 
+  // Determine order type: user or guest
+  const orderType = order?.orderType || (order?.userId ? 'user' : 'guest');
+
   return (
     <TableRow>
       <TableCell className="font-medium">{order?.orderId}</TableCell>
+      <TableCell>
+        <Badge className={orderType === 'user' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}>
+          {orderType === 'user' ? 'User' : 'Guest'}
+        </Badge>
+      </TableCell>
       <TableCell>{order?.fullname}</TableCell>
       <TableCell>{order?.email}</TableCell>
       <TableCell>{order?.phone}</TableCell>
