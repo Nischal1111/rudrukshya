@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -24,9 +24,12 @@ import {
   FileImage,
   UserCircle,
   Truck,
+  Bell,
+  Mail,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { ContainerProps } from "@/HOC/Container";
+import NotificationDropdown from "./notification-dropdown";
 
 interface SidebarItem {
   title: string;
@@ -87,11 +90,6 @@ export function Sidebar({ children }:ContainerProps) {
           url: "/user",
           icon: User,
         },
-        {
-          title: "Consultation",
-          url: "/consultation",
-          icon: Inbox,
-        },
       ],
     },
     {
@@ -138,6 +136,11 @@ export function Sidebar({ children }:ContainerProps) {
           title: "Contact",
           url: "/contact",
           icon: Phone,
+        },
+        {
+          title: "Contact Submissions",
+          url: "/contact-submissions",
+          icon: Mail,
         },
         {
           title: "FAQ",
@@ -214,17 +217,20 @@ export function Sidebar({ children }:ContainerProps) {
           {!collapsed && (
             <h1 className="text-xl font-bold text-gray-800">Khandbari Admin</h1>
           )}
-          <button 
-            onClick={toggleSidebar} 
-            className="p-1 rounded-md hover:bg-gray-100 transition-colors"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-5 w-5 text-gray-500" />
-            ) : (
-              <ChevronLeft className="h-5 w-5 text-gray-500" />
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            {!collapsed && <NotificationDropdown />}
+            <button 
+              onClick={toggleSidebar} 
+              className="p-1 rounded-md hover:bg-gray-100 transition-colors"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <ChevronRight className="h-5 w-5 text-gray-500" />
+              ) : (
+                <ChevronLeft className="h-5 w-5 text-gray-500" />
+              )}
+            </button>
+          </div>
         </div>
         
         <nav className="flex-1 py-4 overflow-y-auto">

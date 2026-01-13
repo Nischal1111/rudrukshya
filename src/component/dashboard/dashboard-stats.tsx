@@ -10,7 +10,6 @@ interface Stats {
   products: number
   orders: number
   events: number
-  consultations: number
   blogs: number
 }
 
@@ -48,7 +47,6 @@ export function DashboardStats() {
     { label: "Total Products", value: stats.products },
     { label: "Total Orders", value: stats.orders },
     { label: "Total Events", value: stats.events },
-    { label: "Total Consultations", value: stats.consultations },
     { label: "Total Blogs", value: stats.blogs },
   ]
 
