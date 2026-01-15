@@ -14,8 +14,13 @@ import {
   addBankQR,
   updateBankQR,
   deleteBankQR,
+  updateIndiaQR,
+  addIndiaBankQR,
+  updateIndiaBankQR,
+  deleteIndiaBankQR,
   type PersonalInfo,
   type BankQR,
+  type IndiaBankQR,
   type FonePayQR
 } from "@/services/personal-info";
 import Loader from "../Loader";
@@ -56,6 +61,24 @@ export default function PersonalInfoManagement() {
     qrCodeFile?: File | null;
     qrCodePreview?: string | null;
   }>>([]);
+
+  // India QR state
+  const [isEditingIndiaQR, setIsEditingIndiaQR] = useState(false);
+  const [indiaQRFile, setIndiaQRFile] = useState<File | null>(null);
+  const [indiaQRPreview, setIndiaQRPreview] = useState<string | null>(null);
+  const indiaQRInputRef = useRef<HTMLInputElement>(null);
+
+  // India Bank QR states
+  const [editingIndiaBankIndex, setEditingIndiaBankIndex] = useState<number | null>(null);
+  const [indiaBankQRForms, setIndiaBankQRForms] = useState<Array<{
+    bankName: string;
+    accountNumber: string;
+    accountHolderName: string;
+    ifscCode?: string;
+    qrCodeFile?: File | null;
+    qrCodePreview?: string | null;
+  }>>([]);
+
   const { data: session } = useSession();
   const token = (session?.user as any)?.jwt || "";
 
@@ -92,9 +115,31 @@ export default function PersonalInfoManagement() {
         } else {
           setBankQRForms([]);
         }
+
+        // Initialize India QR
+        if (data.indiaQR?.qrCodeUrl) {
+          setIndiaQRPreview(data.indiaQR.qrCodeUrl);
+        }
+
+        // Initialize India bank QR forms
+        if (data.indiaBankQRs && data.indiaBankQRs.length > 0) {
+          setIndiaBankQRForms(
+            data.indiaBankQRs.map((bankQR: IndiaBankQR) => ({
+              bankName: bankQR.bankName || "",
+              accountNumber: bankQR.accountNumber || "",
+              accountHolderName: bankQR.accountHolderName || "",
+              ifscCode: bankQR.ifscCode || "",
+              qrCodeFile: null,
+              qrCodePreview: bankQR.qrCodeUrl || null,
+            }))
+          );
+        } else {
+          setIndiaBankQRForms([]);
+        }
       } else {
         setPersonalInfo(null);
         setBankQRForms([]);
+        setIndiaBankQRForms([]);
       }
     } catch (err: any) {
       console.error("Error fetching personal info:", err);
@@ -385,6 +430,188 @@ export default function PersonalInfoManagement() {
       setBankQRForms(updatedForms);
     }
     setEditingBankIndex(null);
+  };
+
+  // India QR handlers
+  const handleIndiaQRChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIndiaQRFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setIndiaQRPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveIndiaQR = async () => {
+    if (!indiaQRFile && !personalInfo?.indiaQR) {
+      toast.error("Please select a QR code image");
+      return;
+    }
+
+    if (!indiaQRFile) {
+      setIsEditingIndiaQR(false);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await updateIndiaQR(indiaQRFile, token);
+      toast.success("India QR updated successfully");
+      setIsEditingIndiaQR(false);
+      setIndiaQRFile(null);
+      await fetchPersonalInfo();
+    } catch (err: any) {
+      console.error("Error updating India QR:", err);
+      toast.error(err?.message || "Failed to update India QR");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelIndiaQR = () => {
+    setIndiaQRFile(null);
+    if (personalInfo?.indiaQR?.qrCodeUrl) {
+      setIndiaQRPreview(personalInfo.indiaQR.qrCodeUrl);
+    } else {
+      setIndiaQRPreview(null);
+    }
+    setIsEditingIndiaQR(false);
+  };
+
+  // India Bank QR handlers
+  const handleAddIndiaBankQR = () => {
+    if (indiaBankQRForms.length >= 3) {
+      toast.error("You can only add up to 3 India bank QR codes");
+      return;
+    }
+    setIndiaBankQRForms([
+      ...indiaBankQRForms,
+      {
+        bankName: "",
+        accountNumber: "",
+        accountHolderName: "",
+        ifscCode: "",
+        qrCodeFile: null,
+        qrCodePreview: null,
+      },
+    ]);
+    setEditingIndiaBankIndex(indiaBankQRForms.length);
+  };
+
+  const handleIndiaBankQRFormChange = (
+    index: number,
+    field: string,
+    value: string | File | null
+  ) => {
+    const updatedForms = [...indiaBankQRForms];
+    if (field === "qrCodeFile" && value instanceof File) {
+      updatedForms[index].qrCodeFile = value;
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updatedForms[index].qrCodePreview = reader.result as string;
+        setIndiaBankQRForms([...updatedForms]);
+      };
+      reader.readAsDataURL(value);
+    } else if (typeof value === "string") {
+      updatedForms[index] = {
+        ...updatedForms[index],
+        [field]: value,
+      };
+    }
+    setIndiaBankQRForms(updatedForms);
+  };
+
+  const handleSaveIndiaBankQR = async (index: number) => {
+    const form = indiaBankQRForms[index];
+    if (!form.bankName || !form.accountNumber || !form.accountHolderName) {
+      toast.error("Please fill in all bank details");
+      return;
+    }
+
+    const bankQR = personalInfo?.indiaBankQRs?.[index];
+    setIsSubmitting(true);
+    try {
+      if (bankQR?._id) {
+        // Update existing
+        await updateIndiaBankQR(bankQR._id, {
+          bankName: form.bankName,
+          accountNumber: form.accountNumber,
+          accountHolderName: form.accountHolderName,
+          ifscCode: form.ifscCode || undefined,
+          qrCode: form.qrCodeFile || undefined,
+        }, token);
+        toast.success("India Bank QR updated successfully");
+      } else {
+        // Add new - QR code is optional
+        await addIndiaBankQR({
+          bankName: form.bankName,
+          accountNumber: form.accountNumber,
+          accountHolderName: form.accountHolderName,
+          ifscCode: form.ifscCode || undefined,
+          qrCode: form.qrCodeFile || undefined,
+        }, token);
+        toast.success("India Bank QR added successfully");
+      }
+      setEditingIndiaBankIndex(null);
+      await fetchPersonalInfo();
+    } catch (err: any) {
+      console.error("Error saving India bank QR:", err);
+      toast.error(err?.message || "Failed to save India bank QR");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteIndiaBankQR = async (index: number) => {
+    const bankQR = personalInfo?.indiaBankQRs?.[index];
+    if (!bankQR?._id) {
+      // Remove from form if not saved yet
+      const updatedForms = indiaBankQRForms.filter((_, i) => i !== index);
+      setIndiaBankQRForms(updatedForms);
+      setEditingIndiaBankIndex(null);
+      return;
+    }
+
+    if (!confirm("Are you sure you want to delete this India bank QR?")) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await deleteIndiaBankQR(bankQR._id, token);
+      toast.success("India Bank QR deleted successfully");
+      await fetchPersonalInfo();
+    } catch (err: any) {
+      console.error("Error deleting India bank QR:", err);
+      toast.error(err?.message || "Failed to delete India bank QR");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelIndiaBankQR = (index: number) => {
+    const bankQR = personalInfo?.indiaBankQRs?.[index];
+    if (bankQR) {
+      // Reset to original values
+      const updatedForms = [...indiaBankQRForms];
+      updatedForms[index] = {
+        bankName: bankQR.bankName || "",
+        accountNumber: bankQR.accountNumber || "",
+        accountHolderName: bankQR.accountHolderName || "",
+        ifscCode: bankQR.ifscCode || "",
+        qrCodeFile: null,
+        qrCodePreview: bankQR.qrCodeUrl || null,
+      };
+      setIndiaBankQRForms(updatedForms);
+    } else {
+      // Remove unsaved form
+      const updatedForms = indiaBankQRForms.filter((_, i) => i !== index);
+      setIndiaBankQRForms(updatedForms);
+    }
+    setEditingIndiaBankIndex(null);
   };
 
   if (loading) return <Loader />;
@@ -871,6 +1098,317 @@ export default function PersonalInfoManagement() {
             {bankQRForms.length === 0 && (
               <p className="text-gray-500 text-center py-8">
                 No bank QR codes added yet. Click "Add Bank QR" to add one.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* India UPI QR Section */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">India UPI QR</h2>
+              <p className="text-sm text-gray-500 mt-1">For Indian clients paying via UPI</p>
+            </div>
+            {!isEditingIndiaQR && (
+              <Button
+                onClick={() => setIsEditingIndiaQR(true)}
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+              >
+                <FaEdit className="mr-2 h-4 w-4" />
+                {personalInfo?.indiaQR ? "Edit" : "Add"}
+              </Button>
+            )}
+          </div>
+
+          {isEditingIndiaQR ? (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="indiaQR" className="text-sm font-medium text-gray-700">
+                  UPI QR Code Image
+                </Label>
+                <Input
+                  ref={indiaQRInputRef}
+                  id="indiaQR"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleIndiaQRChange}
+                  className="mt-2"
+                />
+              </div>
+              {indiaQRPreview && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-600 mb-2">Preview:</p>
+                  <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden">
+                    <Image
+                      src={indiaQRPreview}
+                      alt="India UPI QR Preview"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={handleCancelIndiaQR}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveIndiaQR}
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                  disabled={isSubmitting}
+                >
+                  <FaSave className="mr-2 h-4 w-4" />
+                  {isSubmitting ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {indiaQRPreview ? (
+                <div className="space-y-2">
+                  <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden">
+                    <Image
+                      src={indiaQRPreview}
+                      alt="India UPI QR Code"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600 italic">For Indian clients</p>
+                </div>
+              ) : (
+                <p className="text-gray-500">No India UPI QR code added yet</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* India Bank QR Section */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">India Bank QR Codes</h2>
+              <p className="text-sm text-gray-500 mt-1">Add up to 3 Indian bank accounts with QR codes</p>
+            </div>
+            {editingIndiaBankIndex === null && indiaBankQRForms.length < 3 && (
+              <Button
+                onClick={handleAddIndiaBankQR}
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+                size="lg"
+              >
+                <FaPlus className="mr-2 h-4 w-4" />
+                Add India Bank QR
+              </Button>
+            )}
+            {indiaBankQRForms.length >= 3 && (
+              <p className="text-sm text-gray-500">Maximum 3 India bank QR codes reached</p>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            {indiaBankQRForms.map((form, index) => {
+              const isEditing = editingIndiaBankIndex === index;
+              const bankQR = personalInfo?.indiaBankQRs?.[index];
+
+              return (
+                <div
+                  key={index}
+                  className="border border-orange-200 rounded-lg p-4 space-y-4 bg-orange-50/30"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-gray-800">
+                      India Bank QR {index + 1}
+                    </h3>
+                    {!isEditing && (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => setEditingIndiaBankIndex(index)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <FaEdit className="mr-2 h-3 w-3" />
+                          Edit
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteIndiaBankQR(index)}
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <FaTrash className="mr-2 h-3 w-3" />
+                          Delete
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">
+                            Bank Name
+                          </Label>
+                          <Input
+                            value={form.bankName}
+                            onChange={(e) =>
+                              handleIndiaBankQRFormChange(index, "bankName", e.target.value)
+                            }
+                            placeholder="Enter bank name"
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">
+                            Account Number
+                          </Label>
+                          <Input
+                            value={form.accountNumber}
+                            onChange={(e) =>
+                              handleIndiaBankQRFormChange(
+                                index,
+                                "accountNumber",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Enter account number"
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">
+                            Account Holder Name
+                          </Label>
+                          <Input
+                            value={form.accountHolderName}
+                            onChange={(e) =>
+                              handleIndiaBankQRFormChange(
+                                index,
+                                "accountHolderName",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Enter account holder name"
+                            className="mt-2"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">
+                          IFSC Code (Optional)
+                        </Label>
+                        <Input
+                          value={form.ifscCode || ""}
+                          onChange={(e) =>
+                            handleIndiaBankQRFormChange(
+                              index,
+                              "ifscCode",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Enter IFSC code (e.g., SBIN0001234)"
+                          className="mt-2"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">
+                          QR Code Image
+                        </Label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleIndiaBankQRFormChange(index, "qrCodeFile", file);
+                            }
+                          }}
+                          className="mt-2"
+                        />
+                      </div>
+                      {form.qrCodePreview && (
+                        <div>
+                          <p className="text-sm text-gray-600 mb-2">Preview:</p>
+                          <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden">
+                            <Image
+                              src={form.qrCodePreview}
+                              alt={`India Bank QR ${index + 1} Preview`}
+                              fill
+                              className="object-contain"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleCancelIndiaBankQR(index)}
+                          disabled={isSubmitting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={() => handleSaveIndiaBankQR(index)}
+                          className="bg-orange-500 hover:bg-orange-600 text-white"
+                          disabled={isSubmitting}
+                        >
+                          <FaSave className="mr-2 h-4 w-4" />
+                          {isSubmitting ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600">Bank Name</p>
+                        <p className="font-medium">{form.bankName || "Not set"}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600">Account Number</p>
+                        <p className="font-medium">{form.accountNumber || "Not set"}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm text-gray-600">Account Holder Name</p>
+                        <p className="font-medium">
+                          {form.accountHolderName || "Not set"}
+                        </p>
+                      </div>
+                      {form.ifscCode && (
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600">IFSC Code</p>
+                          <p className="font-medium">{form.ifscCode}</p>
+                        </div>
+                      )}
+                      {form.qrCodePreview && (
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600">QR Code</p>
+                          <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden">
+                            <Image
+                              src={form.qrCodePreview}
+                              alt={`India Bank QR ${index + 1}`}
+                              fill
+                              className="object-contain"
+                            />
+                          </div>
+                          <p className="text-sm text-gray-600 italic">
+                            For Indian clients
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {indiaBankQRForms.length === 0 && (
+              <p className="text-gray-500 text-center py-8">
+                No India bank QR codes added yet. Click "Add India Bank QR" to add one.
               </p>
             )}
           </div>

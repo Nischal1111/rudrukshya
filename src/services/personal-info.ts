@@ -28,6 +28,22 @@ export interface KhaltiQR {
   qrCodeUrl?: string;
 }
 
+export interface IndiaQR {
+  _id?: string;
+  qrCode?: string;
+  qrCodeUrl?: string;
+}
+
+export interface IndiaBankQR {
+  _id?: string;
+  bankName: string;
+  accountNumber: string;
+  accountHolderName: string;
+  ifscCode?: string;
+  qrCode?: string;
+  qrCodeUrl?: string;
+}
+
 export interface ShippingFees {
   insideKathmandu?: number;
   outsideKathmandu?: number;
@@ -41,6 +57,8 @@ export interface PersonalInfo {
   esewaQR?: EsewaQR;
   khaltiQR?: KhaltiQR;
   bankQRs?: BankQR[];
+  indiaQR?: IndiaQR;
+  indiaBankQRs?: IndiaBankQR[];
   shippingFees?: ShippingFees;
 }
 
@@ -339,6 +357,134 @@ export const updateShippingFees = async (fees: {
         err.message ||
         "Failed to update shipping fees";
       throw new Error(errorMessage);
+    } else {
+      throw new Error("An unexpected error occurred");
+    }
+  }
+};
+
+// Update India QR
+export const updateIndiaQR = async (qrCode: File, token: string) => {
+  try {
+    const formData = new FormData();
+    formData.append("indiaQR", qrCode);
+
+    const res = await api.post(
+      `/personal-info/india-qr`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      console.error("India QR update error:", err.response?.data);
+      const errorMessage = err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to update India QR";
+      throw new Error(errorMessage);
+    } else {
+      throw new Error("An unexpected error occurred");
+    }
+  }
+};
+
+// Add India Bank QR
+export const addIndiaBankQR = async (data: {
+  bankName: string;
+  accountNumber: string;
+  accountHolderName: string;
+  ifscCode?: string;
+  qrCode?: File;
+}, token: string) => {
+  try {
+    const formData = new FormData();
+    formData.append("bankName", data.bankName);
+    formData.append("accountNumber", data.accountNumber);
+    formData.append("accountHolderName", data.accountHolderName);
+    if (data.ifscCode) {
+      formData.append("ifscCode", data.ifscCode);
+    }
+    if (data.qrCode) {
+      formData.append("qrCode", data.qrCode);
+    }
+
+    const res = await api.post(
+      `/personal-info/india-bank-qr`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      throw new Error(err.message);
+    } else {
+      throw new Error("An unexpected error occurred");
+    }
+  }
+};
+
+// Update India Bank QR
+export const updateIndiaBankQR = async (id: string, data: {
+  bankName?: string;
+  accountNumber?: string;
+  accountHolderName?: string;
+  ifscCode?: string;
+  qrCode?: File;
+}, token: string) => {
+  try {
+    const formData = new FormData();
+    if (data.bankName) formData.append("bankName", data.bankName);
+    if (data.accountNumber) formData.append("accountNumber", data.accountNumber);
+    if (data.accountHolderName) formData.append("accountHolderName", data.accountHolderName);
+    if (data.ifscCode !== undefined) formData.append("ifscCode", data.ifscCode || "");
+    if (data.qrCode) formData.append("qrCode", data.qrCode);
+
+    const res = await api.put(
+      `/personal-info/india-bank-qr/${id}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      throw new Error(err.message);
+    } else {
+      throw new Error("An unexpected error occurred");
+    }
+  }
+};
+
+// Delete India Bank QR
+export const deleteIndiaBankQR = async (id: string, token: string) => {
+  try {
+    const res = await api.delete(
+      `/personal-info/india-bank-qr/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      throw new Error(err.message);
     } else {
       throw new Error("An unexpected error occurred");
     }
