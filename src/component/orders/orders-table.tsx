@@ -101,6 +101,7 @@ export default function OrdersTable({ filters, page, onPageChange }: OrdersTable
               <TableHead>Payment Status</TableHead>
               <TableHead>Payment Method</TableHead>
               <TableHead>Payment Photo</TableHead>
+              <TableHead>Location</TableHead>
               <TableHead>Created At</TableHead>
 
               <TableHead className="text-right">Actions</TableHead>
