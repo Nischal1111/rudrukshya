@@ -22,6 +22,13 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
     setLightboxOpen(true)
   }
 
+  // Determine location type
+  const locationType = order?.orderLocationType ||
+    (order?.shippingLocation === 'insideKathmandu' || order?.shippingLocation === 'outsideKathmandu' ||
+      order?.deliveryAddress?.country?.toLowerCase() === 'nepal') ? 'nepal' :
+    (order?.shippingLocation === 'india' || order?.deliveryAddress?.country?.toLowerCase() === 'india') ? 'india' :
+      'other'
+
   return (
     <>
       {/* Backdrop */}
@@ -56,26 +63,246 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
                 </div>
                 <div>
                   <p className="text-muted-foreground">Name</p>
-                  <p className="font-medium">{order.fullname}</p>
+                  <p className="font-medium">{order.deliveryAddress?.fullname || order.fullname}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Email</p>
-                  <p className="font-medium">{order.email}</p>
+                  <p className="font-medium">{order.deliveryAddress?.email || order.email || "-"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Phone</p>
-                  <p className="font-medium">{order.phone}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Delivery Address</p>
-                  <p className="font-medium">
-                    {order.deliveryAddress?.street}, {order.deliveryAddress?.city}, {order.deliveryAddress?.country} - {order.deliveryAddress?.postalCode}
-                  </p>
+                  <p className="font-medium">{order.deliveryAddress?.phone || order.phone}</p>
                 </div>
               </div>
             </div>
 
-            {/* Order Information */}
+            {/* Delivery Address - Location Specific */}
+            <div>
+              <h3 className="font-semibold text-foreground mb-3">Delivery Address</h3>
+              <div className="space-y-2 text-sm">
+                {/* Nepal Address Format */}
+                {locationType === 'nepal' && (
+                  <div className="space-y-2">
+                    <p><span className="text-muted-foreground">Country:</span> <span className="font-medium">{order.deliveryAddress?.country || "-"}</span></p>
+                    {order.deliveryAddress?.province && (
+                      <p><span className="text-muted-foreground">Province:</span> <span className="font-medium">{order.deliveryAddress.province}</span></p>
+                    )}
+                    {order.deliveryAddress?.district && (
+                      <p><span className="text-muted-foreground">District:</span> <span className="font-medium">{order.deliveryAddress.district}</span></p>
+                    )}
+                    {order.deliveryAddress?.municipality && (
+                      <p><span className="text-muted-foreground">Municipality / Rural Municipality:</span> <span className="font-medium">{order.deliveryAddress.municipality}</span></p>
+                    )}
+                    {order.deliveryAddress?.wardNumber && (
+                      <p><span className="text-muted-foreground">Ward Number:</span> <span className="font-medium">{order.deliveryAddress.wardNumber}</span></p>
+                    )}
+                    {order.deliveryAddress?.streetToleLandmark && (
+                      <p><span className="text-muted-foreground">Street / Tole / Landmark:</span> <span className="font-medium">{order.deliveryAddress.streetToleLandmark}</span></p>
+                    )}
+                  </div>
+                )}
+
+                {/* India Address Format */}
+                {locationType === 'india' && (
+                  <div className="space-y-2">
+                    <p><span className="text-muted-foreground">Country:</span> <span className="font-medium">{order.deliveryAddress?.country || "-"}</span></p>
+                    {order.deliveryAddress?.state && (
+                      <p><span className="text-muted-foreground">State:</span> <span className="font-medium">{order.deliveryAddress.state}</span></p>
+                    )}
+                    {order.deliveryAddress?.addressLine1 && (
+                      <p><span className="text-muted-foreground">Address Line 1:</span> <span className="font-medium">{order.deliveryAddress.addressLine1}</span></p>
+                    )}
+                    {order.deliveryAddress?.addressLine2 && (
+                      <p><span className="text-muted-foreground">Address Line 2:</span> <span className="font-medium">{order.deliveryAddress.addressLine2}</span></p>
+                    )}
+                    {order.deliveryAddress?.landmark && (
+                      <p><span className="text-muted-foreground">Landmark:</span> <span className="font-medium">{order.deliveryAddress.landmark}</span></p>
+                    )}
+                  </div>
+                )}
+
+                {/* Other Countries Address Format */}
+                {locationType === 'other' && (
+                  <div className="space-y-2">
+                    <p><span className="text-muted-foreground">Country:</span> <span className="font-medium">{order.deliveryAddress?.country || "-"}</span></p>
+                    {order.deliveryAddress?.addressLine1Other && (
+                      <p><span className="text-muted-foreground">Address Line 1:</span> <span className="font-medium">{order.deliveryAddress.addressLine1Other}</span></p>
+                    )}
+                    {order.deliveryAddress?.addressLine2Other && (
+                      <p><span className="text-muted-foreground">Address Line 2:</span> <span className="font-medium">{order.deliveryAddress.addressLine2Other}</span></p>
+                    )}
+                    {order.deliveryAddress?.stateProvinceRegion && (
+                      <p><span className="text-muted-foreground">State / Province / Region:</span> <span className="font-medium">{order.deliveryAddress.stateProvinceRegion}</span></p>
+                    )}
+                    {order.deliveryAddress?.postalZipCode && (
+                      <p><span className="text-muted-foreground">Postal / ZIP Code:</span> <span className="font-medium">{order.deliveryAddress.postalZipCode}</span></p>
+                    )}
+                  </div>
+                )}
+
+                {/* Fallback for legacy addresses */}
+                {!order.deliveryAddress?.fullname && !order.deliveryAddress?.addressLine1 && !order.deliveryAddress?.addressLine1Other && (
+                  <div className="space-y-2">
+                    {order.deliveryAddress?.street && (
+                      <p><span className="text-muted-foreground">Street:</span> <span className="font-medium">{order.deliveryAddress.street}</span></p>
+                    )}
+                    {order.deliveryAddress?.city && (
+                      <p><span className="text-muted-foreground">City:</span> <span className="font-medium">{order.deliveryAddress.city}</span></p>
+                    )}
+                    {order.deliveryAddress?.postalCode && (
+                      <p><span className="text-muted-foreground">Postal Code:</span> <span className="font-medium">{order.deliveryAddress.postalCode}</span></p>
+                    )}
+                    <p><span className="text-muted-foreground">Country:</span> <span className="font-medium">{order.deliveryAddress?.country || "-"}</span></p>
+                  </div>
+                )}
+
+                {order.deliveryAddress?.additionalNotes && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p><span className="text-muted-foreground">Address Notes:</span> <span className="font-medium">{order.deliveryAddress.additionalNotes}</span></p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Location-Specific Information */}
+            {locationType === 'nepal' && (
+              <div>
+                <h3 className="font-semibold text-foreground mb-3">Nepal Order Details</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Shipping Location</p>
+                    <p className="font-medium">
+                      {order.shippingLocation === 'insideKathmandu' ? 'Inside Kathmandu Valley' :
+                        order.shippingLocation === 'outsideKathmandu' ? 'Overall Nepal (Outside KTM)' :
+                          'Nepal'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Shipping Fee</p>
+                    <p className="font-medium">
+                      {locationType === 'nepal' ? 'Rs.' : locationType === 'india' ? '₹' : '$'}
+                      {order.shippingFee != null ? (order.shippingFee / 100).toFixed(2) : "0.00"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Payment Method</p>
+                    <p className="font-medium">{order.paymentMethod || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Province</p>
+                    <p className="font-medium">{order.deliveryAddress?.province || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">District</p>
+                    <p className="font-medium">{order.deliveryAddress?.district || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Municipality</p>
+                    <p className="font-medium">{order.deliveryAddress?.municipality || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Ward Number</p>
+                    <p className="font-medium">{order.deliveryAddress?.wardNumber || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Order Type</p>
+                    <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800`}>
+                      Nepal
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {locationType === 'india' && (
+              <div>
+                <h3 className="font-semibold text-foreground mb-3">India Order Details</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Shipping Location</p>
+                    <p className="font-medium">India</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Shipping Fee</p>
+                    <p className="font-medium">
+                      {locationType === 'india' ? '₹' : locationType === 'nepal' ? 'Rs.' : '$'}
+                      {order.shippingFee != null ? (order.shippingFee / 100).toFixed(2) : "0.00"}
+                    </p>
+                    <p className="text-muted-foreground">Payment Method</p>
+                    <p className="font-medium">{order.paymentMethod || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">State</p>
+                    <p className="font-medium">{order.deliveryAddress?.state || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Address Line 1</p>
+                    <p className="font-medium">{order.deliveryAddress?.addressLine1 || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Address Line 2</p>
+                    <p className="font-medium">{order.deliveryAddress?.addressLine2 || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Landmark</p>
+                    <p className="font-medium">{order.deliveryAddress?.landmark || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Order Type</p>
+                    <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800`}>
+                      India
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {locationType === 'other' && (
+              <div>
+                <h3 className="font-semibold text-foreground mb-3">International Order Details</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Country</p>
+                    <p className="font-medium">{order.deliveryAddress?.country || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Shipping Fee</p>
+                    <p className="font-medium">
+                      {locationType === 'other' ? '$' : locationType === 'nepal' ? 'Rs.' : '₹'}
+                      {order.shippingFee != null ? (order.shippingFee / 100).toFixed(2) : "0.00"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Payment Method</p>
+                    <p className="font-medium">{order.paymentMethod || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Address Line 1</p>
+                    <p className="font-medium">{order.deliveryAddress?.addressLine1Other || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Address Line 2</p>
+                    <p className="font-medium">{order.deliveryAddress?.addressLine2Other || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">State/Province/Region</p>
+                    <p className="font-medium">{order.deliveryAddress?.stateProvinceRegion || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Postal/ZIP Code</p>
+                    <p className="font-medium">{order.deliveryAddress?.postalZipCode || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Order Type</p>
+                    <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800`}>
+                      International
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Order Information - Common for all locations */}
             <div>
               <h3 className="font-semibold text-foreground mb-3">Order Information</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -91,14 +318,52 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
                     {order.paymentStatus}
                   </span>
                 </div>
+                {locationType !== 'nepal' && locationType !== 'india' && (
                 <div>
                   <p className="text-muted-foreground">Payment Method</p>
                   <p className="font-medium">{order.paymentMethod || "-"}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-muted-foreground">Subtotal</p>
+                  <p className="font-medium">
+                    {order.orderLocationType === 'nepal' ? 'Rs.' : order.orderLocationType === 'india' ? '₹' : '$'}
+                    {order.subtotal != null ? (order.subtotal / 100).toFixed(2) :
+                      order.subtotalAfterDiscount != null ? (order.subtotalAfterDiscount / 100).toFixed(2) : "0.00"}
+                  </p>
                 </div>
+                {order.discountAmount > 0 && (
+                  <div>
+                    <p className="text-muted-foreground">Discount</p>
+                    <p className="font-medium text-green-600">
+                      -{order.orderLocationType === 'nepal' ? 'Rs.' : order.orderLocationType === 'india' ? '₹' : '$'}
+                      {order.discountAmount != null ? (order.discountAmount / 100).toFixed(2) : "0.00"}
+                    </p>
+                  </div>
+                )}
+                {order.subtotalAfterDiscount != null && (
+                  <div>
+                    <p className="text-muted-foreground">Subtotal After Discount</p>
+                    <p className="font-medium">
+                      {order.orderLocationType === 'nepal' ? 'Rs.' : order.orderLocationType === 'india' ? '₹' : '$'}
+                      {(order.subtotalAfterDiscount / 100).toFixed(2)}
+                    </p>
+                  </div>
+                )}
+                {order.shippingFee > 0 && (
+                  <div>
+                    <p className="text-muted-foreground">Shipping Fee</p>
+                    <p className="font-medium">
+                      {order.orderLocationType === 'nepal' ? 'Rs.' : order.orderLocationType === 'india' ? '₹' : '$'}
+                      {(order.shippingFee / 100).toFixed(2)}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <p className="text-muted-foreground">Total Amount</p>
                   <p className="font-medium text-lg text-primary">
-                    ${order.totalAmout != null ? (order.totalAmout / 100).toFixed(2) : "0.00"}
+                    {order.orderLocationType === 'nepal' ? 'Rs.' : order.orderLocationType === 'india' ? '₹' : '$'}
+                    {order.totalAmout != null ? (order.totalAmout / 100).toFixed(2) : "0.00"}
                   </p>
                 </div>
                 {order.promocode && (
@@ -110,12 +375,14 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
               </div>
             </div>
 
-            {/* Payment Verification Image */}
-            {order.paymentVerificationImage && (
+            {/* Payment Verification Image - Show for Nepal and India */}
+            {order.paymentVerificationImage && (locationType === 'nepal' || locationType === 'india') && (
               <div>
-                <h3 className="font-semibold text-foreground mb-3">Payment Verification</h3>
+                <h3 className="font-semibold text-foreground mb-3">
+                  {locationType === 'nepal' ? 'Nepal Payment Verification' : 'India Payment Verification'}
+                </h3>
                 <div className="relative group">
-                  <div 
+                  <div
                     className="relative w-full max-w-md h-64 border-2 border-border rounded-lg overflow-hidden cursor-pointer hover:border-primary transition-colors"
                     onClick={() => handleImageClick(order.paymentVerificationImage)}
                   >
@@ -130,6 +397,45 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">Click image to view in full size</p>
+                </div>
+              </div>
+            )}
+
+            {/* International Payment Info - Show for Other countries */}
+            {locationType === 'other' && (
+              <div>
+                <h3 className="font-semibold text-foreground mb-3">International Payment Information</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Payment Method</p>
+                    <p className="font-medium">{order.paymentMethod || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Transaction ID</p>
+                    <p className="font-medium">{order.transactionId || "-"}</p>
+                  </div>
+                  {order.paymentVerificationImage && (
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground mb-2">Payment Proof</p>
+                      <div className="relative group">
+                        <div
+                          className="relative w-full max-w-md h-64 border-2 border-border rounded-lg overflow-hidden cursor-pointer hover:border-primary transition-colors"
+                          onClick={() => handleImageClick(order.paymentVerificationImage)}
+                        >
+                          <Image
+                            src={order.paymentVerificationImage}
+                            alt="Payment verification"
+                            fill
+                            className="object-contain"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                            <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">Click image to view in full size</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -163,7 +469,8 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
                           <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
                         </div>
                         <div className="flex-shrink-0 font-medium text-foreground">
-                          ${product.price ? parseFloat(product.price).toFixed(2) : "0.00"}
+                          {locationType === 'nepal' ? 'Rs.' : locationType === 'india' ? '₹' : '$'}
+                          {product.price ? (parseFloat(product.price) / 100).toFixed(2) : "0.00"}
                         </div>
                       </div>
                     )

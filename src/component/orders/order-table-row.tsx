@@ -38,6 +38,13 @@ export default function OrderTableRow({ order, onView, onEdit, onDelete }: Order
   // Determine order type: user or guest
   const orderType = order?.orderType || (order?.userId ? 'user' : 'guest');
 
+  // Determine location type
+  const locationType = order?.orderLocationType || 
+    (order?.shippingLocation === 'insideKathmandu' || order?.shippingLocation === 'outsideKathmandu' || 
+     order?.deliveryAddress?.country?.toLowerCase() === 'nepal') ? 'nepal' :
+    (order?.shippingLocation === 'india' || order?.deliveryAddress?.country?.toLowerCase() === 'india') ? 'india' :
+    'other';
+
   return (
     <TableRow>
       <TableCell className="font-medium">{order?.orderId}</TableCell>
@@ -49,7 +56,20 @@ export default function OrderTableRow({ order, onView, onEdit, onDelete }: Order
       <TableCell>{order?.fullname}</TableCell>
       <TableCell>{order?.email}</TableCell>
       <TableCell>{order?.phone}</TableCell>
-      <TableCell>${order?.totalAmout != null ? (order.totalAmout / 100).toFixed(2) : "0.00"}</TableCell>
+      <TableCell>
+        <div className="flex flex-col">
+          <span className="font-medium">
+            {locationType === 'nepal' ? 'Rs.' : locationType === 'india' ? '₹' : '$'}
+            {order?.totalAmout != null ? (order.totalAmout / 100).toFixed(2) : "0.00"}
+          </span>
+          {order?.shippingFee > 0 && (
+            <span className="text-xs text-muted-foreground">
+              Shipping: {locationType === 'nepal' ? 'Rs.' : locationType === 'india' ? '₹' : '$'}
+              {(order.shippingFee / 100).toFixed(2)}
+            </span>
+          )}
+        </div>
+      </TableCell>
       <TableCell>
         <Badge className={`${orderStatusBadge.bg} ${orderStatusBadge.text}`}>
           {order?.orderStatus}
@@ -66,9 +86,24 @@ export default function OrderTableRow({ order, onView, onEdit, onDelete }: Order
         </div>
       </TableCell>
       <TableCell>
-        {order?.paymentVerificationImage ? <Image src={order?.paymentVerificationImage} alt="Payment verification" width={20} height={20} /> : "-"}
+        {order?.paymentVerificationImage ? (
+          <Image src={order?.paymentVerificationImage} alt="Payment verification" width={20} height={20} className="rounded" />
+        ) : "-"}
       </TableCell>
-      <TableCell>{format(new Date(order?.createdAt), "MMM dd, yyyy")}</TableCell>
+      <TableCell>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium">{format(new Date(order?.createdAt), "MMM dd, yyyy")}</span>
+          <Badge className={
+            locationType === 'nepal' ? 'bg-green-100 text-green-800' :
+            locationType === 'india' ? 'bg-orange-100 text-orange-800' :
+            'bg-blue-100 text-blue-800'
+          }>
+            {locationType === 'nepal' ? 'Nepal' :
+             locationType === 'india' ? 'India' :
+             'Other'}
+          </Badge>
+        </div>
+      </TableCell>
       <TableCell className="text-right">
         <div className="flex gap-2 justify-end">
           <Button variant="ghost" size="sm" onClick={onView} title="View order">

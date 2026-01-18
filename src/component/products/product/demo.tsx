@@ -16,6 +16,7 @@ import { IoCloseCircle } from "react-icons/io5"
 import { MdKeyboardArrowDown } from "react-icons/md"
 import { toast } from "sonner"
 import { getAllCategories } from "@/services/categories"
+import { listPromocodes } from "@/services/promocode"
 import { useParams, useRouter } from "next/navigation"
 import { josefin } from "@/utils/font"
 import { IoArrowBackOutline } from "react-icons/io5"
@@ -39,6 +40,15 @@ interface Variant {
   price: number
   stock: number
   imgUrl: string
+}
+
+interface PromoCode {
+  _id: string
+  code: string
+  discountPercentage?: number
+  discountAmount?: number
+  isActive: boolean
+  usageLimit?: number | null
 }
 
 interface Size {
@@ -155,6 +165,9 @@ const Demo: React.FC = () => {
   const [variants, setVariants] = useState<Variant[]>([])
   const [selectedVariants, setSelectedVariants] = useState<Set<string>>(new Set())
   const [defaultVariant, setDefaultVariant] = useState<string>("")
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([])
+  const [promoEnabled, setPromoEnabled] = useState<boolean>(false)
+  const [selectedPromoCodes, setSelectedPromoCodes] = useState<Set<string>>(new Set())
   const [sizes, setSizes] = useState<Size[]>([])
   const [newSizeName, setNewSizeName] = useState<string>("")
   const [newSizePrice, setNewSizePrice] = useState<string>("")
@@ -426,6 +439,21 @@ const Demo: React.FC = () => {
     }
   }
 
+  const fetchPromoCodes = async (): Promise<void> => {
+    try {
+      const token = (session?.user as any)?.jwt || ""
+      if (!token) {
+        console.log("No token available for fetching promo codes")
+        return
+      }
+      const data = await listPromocodes(token)
+      setPromoCodes(data.promos || [])
+      console.log("Fetched promo codes:", data)
+    } catch (error) {
+      console.error("Failed to fetch promo codes:", error)
+    }
+  }
+
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     setIsDragging(true)
@@ -526,6 +554,11 @@ const Demo: React.FC = () => {
       }
       if (selectedVariants.size > 0) {
         formData.append("variants", JSON.stringify(Array.from(selectedVariants)))
+      }
+      // Append promo code settings
+      formData.append("promoEnabled", String(promoEnabled))
+      if (selectedPromoCodes.size > 0) {
+        formData.append("allowedPromoCodes", JSON.stringify(Array.from(selectedPromoCodes)))
       }
       // Append image files
       if (!page) {
@@ -642,6 +675,15 @@ const Demo: React.FC = () => {
         setValue("defaultVariant", defaultId)
       }
 
+      // Set promo code fields
+      if (data.product.promoEnabled !== undefined) {
+        setPromoEnabled(data.product.promoEnabled)
+      }
+      if (data.product.allowedPromoCodes && Array.isArray(data.product.allowedPromoCodes)) {
+        const promoIds = data.product.allowedPromoCodes.map((p: any) => p._id || p)
+        setSelectedPromoCodes(new Set(promoIds))
+      }
+
       console.log(data)
     } catch (error) {
       console.error("Fetch failed:", error)
@@ -678,7 +720,8 @@ const Demo: React.FC = () => {
     }
     fetchSubCategory()
     fetchVariants()
-  }, [params])
+    fetchPromoCodes()
+  }, [params, session])
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-8">
@@ -1682,6 +1725,109 @@ const Demo: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Promo Codes Section */}
+            <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
+              <div className="bg-gradient-to-r from-green-500/5 to-green-500/10 px-6 py-4 border-b border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <span className="w-1.5 h-6 bg-green-500 rounded-full"></span>
+                  Promo Codes
+                </h2>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  {/* Enable Promo Toggle */}
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-700">Enable Promo Codes</div>
+                      <p className="text-xs text-gray-500 mt-1">Allow promo codes to be applied to this product</p>
+                    </div>
+                    <TailwindSwitch
+                      checked={promoEnabled}
+                      onCheckedChange={(checked) => {
+                        setPromoEnabled(checked)
+                        if (!checked) {
+                          setSelectedPromoCodes(new Set())
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Promo Code Selection */}
+                  {promoEnabled && (
+                    <>
+                      <div>
+                        <div className="text-sm font-semibold text-gray-700 mb-3">Select Allowed Promo Codes</div>
+                        <div className="space-y-2">
+                          {promoCodes.length > 0 ? (
+                            promoCodes.filter(promo => promo.isActive).map((promo) => (
+                              <label
+                                key={promo._id}
+                                className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer hover:bg-gray-50 transition-all duration-200"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedPromoCodes.has(promo._id)}
+                                  onChange={(e) => {
+                                    const newSelection = new Set(selectedPromoCodes)
+                                    if (e.target.checked) {
+                                      newSelection.add(promo._id)
+                                    } else {
+                                      newSelection.delete(promo._id)
+                                    }
+                                    setSelectedPromoCodes(newSelection)
+                                  }}
+                                  className="w-4 h-4 text-green-500 cursor-pointer"
+                                />
+                                <div className="flex-1">
+                                  <span className="font-medium text-gray-700">{promo.code}</span>
+                                  <span className="text-gray-500 text-sm ml-2">
+                                    {promo.discountPercentage ? `${promo.discountPercentage}% off` : `$${promo.discountAmount} off`}
+                                  </span>
+                                  {promo.usageLimit && (
+                                    <span className="text-gray-400 text-xs ml-2">
+                                      (Limit: {promo.usageLimit})
+                                    </span>
+                                  )}
+                                </div>
+                              </label>
+                            ))
+                          ) : (
+                            <p className="text-gray-500 text-sm">No active promo codes available</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {selectedPromoCodes.size > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold text-gray-700">Selected Promo Codes:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {Array.from(selectedPromoCodes).map((promoId) => {
+                              const promo = promoCodes.find((p) => p._id === promoId)
+                              return promo ? (
+                                <div
+                                  key={promoId}
+                                  className="bg-gradient-to-r from-green-500/10 to-green-500/5 text-green-600 px-3 py-1.5 rounded-full text-sm font-medium border border-green-500/20"
+                                >
+                                  {promo.code}
+                                </div>
+                              ) : null
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {!promoEnabled && (
+                    <div className="text-center py-6 text-gray-400 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                      <p className="text-sm">Enable promo codes to select which ones can be applied to this product.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-shadow hover:shadow-lg">
               <div className="bg-gradient-to-r from-primaryColor/5 to-primaryColor/10 px-6 py-4 border-b border-gray-100">
                 <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
