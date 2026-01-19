@@ -55,7 +55,7 @@ export default function Gallery({ sendUploadId }: GalleryProps) {
     setLoading(true)
     setError(null)
     try {
-      const response = await axios.get<GalleryResponse>(`${process.env.NEXT_PUBLIC_BASE_URL}/gallery`, {
+      const response = await axios.get<GalleryResponse>(`${process.env.NEXT_PUBLIC_BASE_URL}/upload/gallery`, {
         params: { page },
         headers: {
           Authorization: `Bearer ${token}`,
