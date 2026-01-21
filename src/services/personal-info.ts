@@ -51,6 +51,13 @@ export interface ShippingFees {
   otherInternational?: number;
 }
 
+export interface ShippingEstimates {
+  insideKathmandu?: string;
+  outsideKathmandu?: string;
+  india?: string;
+  otherInternational?: string;
+}
+
 export interface PersonalInfo {
   _id?: string;
   fonepayQR?: FonePayQR;
@@ -60,6 +67,7 @@ export interface PersonalInfo {
   indiaQR?: IndiaQR;
   indiaBankQRs?: IndiaBankQR[];
   shippingFees?: ShippingFees;
+  shippingEstimates?: ShippingEstimates;
 }
 
 export const getPersonalInfo = async () => {
@@ -338,6 +346,7 @@ export const updateShippingFees = async (fees: {
   outsideKathmandu: number;
   india: number;
   otherInternational: number;
+  estimatedDeliveryDays?: ShippingEstimates;
 }, token: string) => {
   try {
     const res = await api.put(

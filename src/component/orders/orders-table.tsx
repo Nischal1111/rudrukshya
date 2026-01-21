@@ -100,6 +100,7 @@ export default function OrdersTable({ filters, page, onPageChange }: OrdersTable
               <TableHead>Order Status</TableHead>
               <TableHead>Payment Status</TableHead>
               <TableHead>Payment Method</TableHead>
+              <TableHead>Promo Used</TableHead>
               <TableHead>Payment Photo</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Created At</TableHead>
