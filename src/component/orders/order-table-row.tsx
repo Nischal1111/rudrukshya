@@ -86,6 +86,13 @@ export default function OrderTableRow({ order, onView, onEdit, onDelete }: Order
         </div>
       </TableCell>
       <TableCell>
+        {order?.promocode?.code ? (
+          <Badge className="bg-purple-100 text-purple-800">{order.promocode.code}</Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">-</span>
+        )}
+      </TableCell>
+      <TableCell>
         {order?.paymentVerificationImage ? (
           <Image src={order?.paymentVerificationImage} alt="Payment verification" width={20} height={20} className="rounded" />
         ) : "-"}

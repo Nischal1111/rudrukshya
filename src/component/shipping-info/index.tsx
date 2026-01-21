@@ -17,6 +17,13 @@ interface ShippingFees {
   otherInternational: number;
 }
 
+interface ShippingEstimates {
+  insideKathmandu: string;
+  outsideKathmandu: string;
+  india: string;
+  otherInternational: string;
+}
+
 export default function ShippingInfoManagement() {
   const [personalInfo, setPersonalInfo] = useState<PersonalInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,6 +34,12 @@ export default function ShippingInfoManagement() {
     outsideKathmandu: 0,
     india: 0,
     otherInternational: 0,
+  });
+  const [shippingEstimates, setShippingEstimates] = useState<ShippingEstimates>({
+    insideKathmandu: "",
+    outsideKathmandu: "",
+    india: "",
+    otherInternational: "",
   });
   const { data: session } = useSession();
   const token = (session?.user as any)?.jwt || "";
@@ -45,6 +58,14 @@ export default function ShippingInfoManagement() {
             outsideKathmandu: data.shippingFees.outsideKathmandu || 0,
             india: data.shippingFees.india || 0,
             otherInternational: data.shippingFees.otherInternational || 0,
+          });
+        }
+        if (data.shippingEstimates) {
+          setShippingEstimates({
+            insideKathmandu: data.shippingEstimates.insideKathmandu || "",
+            outsideKathmandu: data.shippingEstimates.outsideKathmandu || "",
+            india: data.shippingEstimates.india || "",
+            otherInternational: data.shippingEstimates.otherInternational || "",
           });
         }
       } else {
@@ -71,10 +92,23 @@ export default function ShippingInfoManagement() {
     }));
   };
 
+  const handleEstimateChange = (field: keyof ShippingEstimates, value: string) => {
+    setShippingEstimates((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
   const handleSave = async () => {
     setIsSubmitting(true);
     try {
-      await updateShippingFees(shippingFees, token);
+      await updateShippingFees(
+        {
+          ...shippingFees,
+          estimatedDeliveryDays: shippingEstimates,
+        },
+        token
+      );
       toast.success("Shipping fees updated successfully");
       await fetchPersonalInfo();
     } catch (err: any) {
@@ -126,6 +160,14 @@ export default function ShippingInfoManagement() {
                 />
               </div>
               <p className="text-xs text-gray-500">Shipping fee for orders within Kathmandu valley</p>
+              <Input
+                id="insideKathmanduEstimate"
+                type="text"
+                value={shippingEstimates.insideKathmandu}
+                onChange={(e) => handleEstimateChange("insideKathmandu", e.target.value)}
+                placeholder="e.g. 3-5 days"
+              />
+              <p className="text-xs text-gray-500">Estimated delivery time shown to customers</p>
             </div>
 
             {/* Outside Kathmandu (Overall Nepal) */}
@@ -147,6 +189,14 @@ export default function ShippingInfoManagement() {
                 />
               </div>
               <p className="text-xs text-gray-500">Shipping fee for orders outside Kathmandu valley in Nepal</p>
+              <Input
+                id="outsideKathmanduEstimate"
+                type="text"
+                value={shippingEstimates.outsideKathmandu}
+                onChange={(e) => handleEstimateChange("outsideKathmandu", e.target.value)}
+                placeholder="e.g. 5-7 days"
+              />
+              <p className="text-xs text-gray-500">Estimated delivery time shown to customers</p>
             </div>
 
             {/* India */}
@@ -168,6 +218,14 @@ export default function ShippingInfoManagement() {
                 />
               </div>
               <p className="text-xs text-gray-500">Shipping fee for orders to India</p>
+              <Input
+                id="indiaEstimate"
+                type="text"
+                value={shippingEstimates.india}
+                onChange={(e) => handleEstimateChange("india", e.target.value)}
+                placeholder="e.g. 7-10 days"
+              />
+              <p className="text-xs text-gray-500">Estimated delivery time shown to customers</p>
             </div>
 
             {/* Other International Countries */}
@@ -189,6 +247,14 @@ export default function ShippingInfoManagement() {
                 />
               </div>
               <p className="text-xs text-gray-500">Shipping fee for orders to other international countries</p>
+              <Input
+                id="otherInternationalEstimate"
+                type="text"
+                value={shippingEstimates.otherInternational}
+                onChange={(e) => handleEstimateChange("otherInternational", e.target.value)}
+                placeholder="e.g. 10-15 days"
+              />
+              <p className="text-xs text-gray-500">Estimated delivery time shown to customers</p>
             </div>
           </div>
 

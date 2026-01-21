@@ -359,6 +359,12 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
                     </p>
                   </div>
                 )}
+                {order.estimatedDeliveryDays && (
+                  <div>
+                    <p className="text-muted-foreground">Estimated Delivery</p>
+                    <p className="font-medium">{order.estimatedDeliveryDays}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-muted-foreground">Total Amount</p>
                   <p className="font-medium text-lg text-primary">
