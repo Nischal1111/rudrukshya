@@ -19,6 +19,10 @@ const getStatusBadge = (status: string) => {
   const statusMap: Record<string, { bg: string; text: string }> = {
     Pending: { bg: "bg-yellow-100", text: "text-yellow-800" },
     Processing: { bg: "bg-blue-100", text: "text-blue-800" },
+    "Order Placed": { bg: "bg-indigo-100", text: "text-indigo-800" },
+    Shipped: { bg: "bg-purple-100", text: "text-purple-800" },
+    "Out for Delivery": { bg: "bg-orange-100", text: "text-orange-800" },
+    Delivered: { bg: "bg-green-100", text: "text-green-800" },
     Completed: { bg: "bg-green-100", text: "text-green-800" },
     Cancelled: { bg: "bg-red-100", text: "text-red-800" },
   }

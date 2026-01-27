@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-type PaymentLocation = "nepal" | "outside" | null;
+type PaymentLocation = "nepal" | "india" | "outside" | null;
 type PaymentMethod = "esewa" | "khalti" | "fonepay" | "bank";
 
 export default function PaymentPage() {
@@ -18,6 +18,7 @@ export default function PaymentPage() {
   const [error, setError] = useState<string | null>(null);
   const [paymentLocation, setPaymentLocation] = useState<PaymentLocation>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("esewa");
+  const [selectedIndiaTab, setSelectedIndiaTab] = useState<"qr" | "bank">("qr");
   
   // Form state
   const [formData, setFormData] = useState({
@@ -101,13 +102,20 @@ export default function PaymentPage() {
         {!paymentLocation && (
           <div className="bg-white rounded-lg shadow-md p-8 mb-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-6">Select Payment Location</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <button
                 onClick={() => setPaymentLocation("nepal")}
                 className="p-6 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
               >
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">Paying from Nepal</h3>
                 <p className="text-gray-600">All payment methods available</p>
+              </button>
+              <button
+                onClick={() => setPaymentLocation("india")}
+                className="p-6 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+              >
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Paying from India</h3>
+                <p className="text-gray-600">Bank transfer</p>
               </button>
               <button
                 onClick={() => setPaymentLocation("outside")}
@@ -244,6 +252,100 @@ export default function PaymentPage() {
                     )}
                   </div>
                 </>
+              )}
+
+              {paymentLocation === "india" && (
+                <div className="space-y-4">
+                  {/* Tabs for India: UPI QR vs Bank Transfer */}
+                  <div className="flex gap-4 mb-4 border-b border-gray-200">
+                    <button
+                      onClick={() => setSelectedIndiaTab("qr")}
+                      className={`px-4 py-2 font-medium text-sm transition-colors ${
+                        selectedIndiaTab === "qr"
+                          ? "border-b-2 border-blue-600 text-blue-600"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      UPI QR
+                    </button>
+                    <button
+                      onClick={() => setSelectedIndiaTab("bank")}
+                      className={`px-4 py-2 font-medium text-sm transition-colors ${
+                        selectedIndiaTab === "bank"
+                          ? "border-b-2 border-blue-600 text-blue-600"
+                          : "text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      Bank Transfer
+                    </button>
+                  </div>
+
+                  {/* India UPI QR */}
+                  {selectedIndiaTab === "qr" && personalInfo?.indiaQR?.qrCodeUrl && (
+                    <div className="flex flex-col items-center space-y-3">
+                      <h3 className="text-lg font-semibold text-gray-900">India UPI QR</h3>
+                      <div className="relative w-64 h-64 border border-gray-300 rounded-md overflow-hidden bg-white p-4">
+                        <Image
+                          src={personalInfo.indiaQR.qrCodeUrl}
+                          alt="India UPI QR Code"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                      <p className="text-sm text-gray-600">Scan to pay using UPI apps in India.</p>
+                    </div>
+                  )}
+                  {selectedIndiaTab === "qr" && !personalInfo?.indiaQR?.qrCodeUrl && (
+                    <p className="text-gray-500">No India UPI QR available. Please contact support.</p>
+                  )}
+
+                  {/* India Bank Transfer (same details as international bank transfer) */}
+                  {selectedIndiaTab === "bank" && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Bank Transfer Details</h3>
+                      {personalInfo?.bankQRs && personalInfo.bankQRs.length > 0 ? (
+                        personalInfo.bankQRs.map((bankQR, index) => (
+                          <div key={bankQR._id || index} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                            {bankQR.qrCodeUrl && (
+                              <div className="flex flex-col items-center space-y-2 mb-3">
+                                <div className="relative w-48 h-48 border border-gray-300 rounded-md overflow-hidden bg-white p-2">
+                                  <Image
+                                    src={bankQR.qrCodeUrl}
+                                    alt={`${bankQR.bankName} QR Code`}
+                                    fill
+                                    className="object-contain"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            <div className="space-y-2">
+                              <div>
+                                <p className="text-xs text-gray-500">Bank Name</p>
+                                <p className="font-medium text-sm">{bankQR.bankName}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Account Number</p>
+                                <p className="font-medium text-sm">{bankQR.accountNumber}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Account Holder</p>
+                                <p className="font-medium text-sm">{bankQR.accountHolderName}</p>
+                              </div>
+                              {bankQR.swiftCode && (
+                                <div>
+                                  <p className="text-xs text-gray-500">SWIFT Code</p>
+                                  <p className="font-medium text-sm">{bankQR.swiftCode}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-500">No bank transfer details available</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
 
               {paymentLocation === "outside" && (
