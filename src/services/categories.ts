@@ -77,3 +77,20 @@ export const createSubCategoryByName = async (categoryName: string, name: string
     }
   }
 };
+
+export const updateCategory = async (id: string, data: any, token: string) => {
+  try {
+    const res = await api.patch(`/category/update/${id}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return res.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      throw new Error(err.message);
+    } else {
+      throw new Error("An unexpected error occurred");
+    }
+  }
+};

@@ -13,7 +13,16 @@ interface OrdersFiltersProps {
   onPageReset: () => void
 }
 
-const ORDER_STATUSES = ["Pending", "Processing", "Completed", "Cancelled"]
+const ORDER_STATUSES = [
+  "Pending",
+  "Processing",
+  "Order Placed",
+  "Shipped",
+  "Out for Delivery",
+  "Delivered",
+  "Completed",
+  "Cancelled",
+]
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed"]
 
 export default function OrdersFilters({ filters, onFilterChange, onPageReset }: OrdersFiltersProps) {
@@ -52,9 +61,7 @@ export default function OrdersFilters({ filters, onFilterChange, onPageReset }: 
             className="w-full px-3 py-2 text-left border border-input bg-background rounded-md flex items-center justify-between hover:bg-accent/50 transition text-foreground"
           >
             <span className={filters.orderStatus ? "text-foreground" : "text-muted-foreground"}>
-              {filters.orderStatus
-                ? ORDER_STATUSES.find((s) => s.toLowerCase() === filters.orderStatus)
-                : "Order Status"}
+              {filters.orderStatus || "Order Status"}
             </span>
             <ChevronDown className="h-4 w-4" />
           </button>
@@ -73,7 +80,7 @@ export default function OrdersFilters({ filters, onFilterChange, onPageReset }: 
                 <button
                   key={status}
                   onClick={() => {
-                    handleFilterChange("orderStatus", status.toLowerCase())
+                    handleFilterChange("orderStatus", status)
                     setOrderStatusOpen(false)
                   }}
                   className="w-full text-left px-3 py-2 hover:bg-accent/50 transition text-foreground text-sm"
@@ -92,9 +99,7 @@ export default function OrdersFilters({ filters, onFilterChange, onPageReset }: 
             className="w-full px-3 py-2 text-left border border-input bg-background rounded-md flex items-center justify-between hover:bg-accent/50 transition text-foreground"
           >
             <span className={filters.paymentStatus ? "text-foreground" : "text-muted-foreground"}>
-              {filters.paymentStatus
-                ? PAYMENT_STATUSES.find((s) => s.toLowerCase() === filters.paymentStatus)
-                : "Payment Status"}
+              {filters.paymentStatus || "Payment Status"}
             </span>
             <ChevronDown className="h-4 w-4" />
           </button>
@@ -113,7 +118,7 @@ export default function OrdersFilters({ filters, onFilterChange, onPageReset }: 
                 <button
                   key={status}
                   onClick={() => {
-                    handleFilterChange("paymentStatus", status.toLowerCase())
+                    handleFilterChange("paymentStatus", status)
                     setPaymentStatusOpen(false)
                   }}
                   className="w-full text-left px-3 py-2 hover:bg-accent/50 transition text-foreground text-sm"

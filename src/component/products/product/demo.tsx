@@ -2007,6 +2007,9 @@ const Demo: React.FC = () => {
                 <p className="text-xs text-gray-500 text-center">
                   {productImages.length}/4 images uploaded. Use object-contain display.
                 </p>
+                <p className="text-xs text-gray-500 text-center">
+                  Recommended image size: 400x400px
+                </p>
               </div>
             </div>
           </div>

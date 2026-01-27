@@ -359,12 +359,24 @@ export default function OrderViewModal({ open, onOpenChange, order }: OrderViewM
                     </p>
                   </div>
                 )}
-                {order.estimatedDeliveryDays && (
-                  <div>
-                    <p className="text-muted-foreground">Estimated Delivery</p>
-                    <p className="font-medium">{order.estimatedDeliveryDays}</p>
-                  </div>
-                )}
+                {(() => {
+                  const fallbackMap: Record<string, string> = {
+                    insideKathmandu: '3-5 days',
+                    outsideKathmandu: '5-7 days',
+                    india: '7-10 days',
+                    otherInternational: '10-15 days',
+                  }
+                  const est =
+                    (order.estimatedDeliveryDays && order.estimatedDeliveryDays.trim()) ||
+                    (order.shippingLocation ? fallbackMap[order.shippingLocation] : null)
+                  if (!est) return null
+                  return (
+                    <div>
+                      <p className="text-muted-foreground">Estimated Delivery</p>
+                      <p className="font-medium">{est}</p>
+                    </div>
+                  )
+                })()}
                 <div>
                   <p className="text-muted-foreground">Total Amount</p>
                   <p className="font-medium text-lg text-primary">
