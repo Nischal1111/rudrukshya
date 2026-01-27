@@ -54,10 +54,14 @@ import {
   createSubCategoryByName,
   deleteSubCategory,
   getAllCategories,
+  updateCategory,
 } from "@/services/categories";
 import { FaPlus } from "react-icons/fa6";
 import { HiOutlineSearch } from "react-icons/hi";
 import Loader from "../Loader";
+import { toast } from "sonner";
+import Image from "next/image";
+import { createUpload } from "@/services/upload";
 
 export type Payment = {
   _id: string;
@@ -72,6 +76,12 @@ export default function Categories() {
   const [users1, setUsers1] = useState<Payment[]>([]);
   const [users2, setUsers2] = useState<Payment[]>([]);
   const [name, setName] = useState<string>("");
+  const [categories, setCategories] = useState<any[]>([]);
+  const [editCategoryOpen, setEditCategoryOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any | null>(null);
+  const [categoryImage, setCategoryImage] = useState<string>("");
+  const [categoryImageFile, setCategoryImageFile] = useState<File | null>(null);
+  const [isSavingCategoryImage, setIsSavingCategoryImage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -197,6 +207,7 @@ export default function Categories() {
   const fetchData = async () => {
     try {
       const data = await getAllCategories();
+      setCategories(data || []);
       // Find categories by name
       const malaCategory = data.find((cat: any) => cat.name?.toLowerCase() === "mala");
       const braceletCategory = data.find((cat: any) => cat.name?.toLowerCase() === "bracelet");
@@ -209,6 +220,50 @@ export default function Categories() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to fetch users");
       setLoading(false);
+    }
+  };
+
+  const openEditCategory = (cat: any) => {
+    setEditingCategory(cat);
+    setCategoryImage(cat?.image || "");
+    setCategoryImageFile(null);
+    setEditCategoryOpen(true);
+  };
+
+  const handleSaveCategoryImage = async () => {
+    try {
+      if (!editingCategory?._id) return;
+
+      setIsSavingCategoryImage(true);
+
+      let finalImageUrl = categoryImage;
+
+      // If a new file is selected, upload it first
+      if (categoryImageFile) {
+        const formData = new FormData();
+        formData.append("images", categoryImageFile);
+
+        const uploadRes = await createUpload(formData, token);
+        const uploadedImage =
+          uploadRes?.data?.media?.find((m: any) => m?.type === "image") ||
+          uploadRes?.data?.media?.[0];
+
+        if (!uploadedImage?.url) {
+          throw new Error("Failed to get uploaded image URL");
+        }
+
+        finalImageUrl = uploadedImage.url;
+      }
+
+      await updateCategory(editingCategory._id, { image: finalImageUrl }, token);
+      toast.success("Category image updated");
+      setEditCategoryOpen(false);
+      setEditingCategory(null);
+      await fetchData();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to update category");
+    } finally {
+      setIsSavingCategoryImage(false);
     }
   };
 
@@ -264,7 +319,137 @@ export default function Categories() {
   return (
     <div className="w-full bg-gray-50 p-6 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Category Images */}
+        <div className="bg-white rounded-2xl shadow-md overflow-hidden mb-8 border border-gray-100">
+          <div className="bg-gradient-to-r from-primaryColor/90 to-primaryColor p-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-white">Homepage Category Images</h2>
+              <p className="text-xs text-white/80 mt-1">
+                These images are shown on the user homepage in the “Shop by Categories” section.
+              </p>
+            </div>
+          </div>
+          <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-5">
+            {["Beads", "Mala", "Bracelet"].map((name) => {
+              const cat = categories.find((c: any) => c?.name?.toLowerCase() === name.toLowerCase());
+              return (
+                <div
+                  key={name}
+                  className="rounded-xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white p-4 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-primaryColor/10 text-primaryColor text-xs font-semibold">
+                        <span className="w-1 h-1 rounded-full bg-primaryColor" />
+                        Category
+                      </div>
+                      <h3 className="mt-2 text-sm font-semibold text-gray-900">{name}</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Used as the main banner image for this category.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 mt-2">
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
+                      {cat?.image ? (
+                        <Image src={cat.image} alt={`${name} image`} fill className="object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[11px] text-gray-400 px-2 text-center">
+                          No image set
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 flex flex-col gap-2">
+                      <div className="text-[11px] text-gray-500">
+                        {cat?.image
+                          ? "Image sourced from your media uploads (Cloudinary)."
+                          : "Upload an image to personalize this category."}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditCategory(cat)}
+                        disabled={!cat?._id}
+                        className="justify-center text-xs"
+                      >
+                        {cat?.image ? "Change Image" : "Add Image"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <Dialog open={editCategoryOpen} onOpenChange={setEditCategoryOpen}>
+          <DialogContent className="sm:max-w-[520px] bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold">
+                Edit Category Image {editingCategory?.name ? `- ${editingCategory.name}` : ""}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="font-medium">Category Image</Label>
+                  <div className="flex gap-4 items-center">
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                      {(categoryImageFile || categoryImage) ? (
+                        <Image
+                          src={categoryImageFile ? URL.createObjectURL(categoryImageFile) : categoryImage}
+                          alt="Category preview"
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                          No image
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
+                        <span>Upload Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setCategoryImageFile(file);
+                          }}
+                        />
+                      </label>
+                      {categoryImage && !categoryImageFile && (
+                        <button
+                          type="button"
+                          className="text-xs text-gray-500 underline text-left"
+                          onClick={() => setCategoryImage("")}
+                        >
+                          Remove current image
+                        </button>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        Recommended size: 400x400px. JPG, PNG, WEBP.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={handleSaveCategoryImage}
+                disabled={isSavingCategoryImage}
+                className="bg-primaryColor hover:bg-primaryColor/90"
+              >
+                {isSavingCategoryImage ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <div className="grid grid-cols-1 gap-8">
           {/* Mala Categories Section */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="bg-primaryColor/90 p-4">

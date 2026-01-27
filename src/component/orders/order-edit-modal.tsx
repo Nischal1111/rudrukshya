@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { X, ChevronDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { updateOrderStatus, updatePaymentStatus } from "@/services/order"
+import { updateOrderStatus, updatePaymentStatus, editOrder } from "@/services/order"
 
 interface OrderEditModalProps {
   open: boolean
@@ -13,12 +13,22 @@ interface OrderEditModalProps {
   onSuccess: () => void
 }
 
-const ORDER_STATUSES = ["Pending", "Processing", "Completed", "Cancelled"]
+const ORDER_STATUSES = [
+  "Pending",
+  "Processing",
+  "Order Placed",
+  "Shipped",
+  "Out for Delivery",
+  "Delivered",
+  "Completed",
+  "Cancelled",
+]
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed"]
 
 export default function OrderEditModal({ open, onOpenChange, order, onSuccess }: OrderEditModalProps) {
   const [orderStatus, setOrderStatus] = useState(order?.orderStatus || "")
   const [paymentStatus, setPaymentStatus] = useState(order?.paymentStatus || "")
+  const [estimatedDeliveryDays, setEstimatedDeliveryDays] = useState(order?.estimatedDeliveryDays || "")
   const [orderStatusOpen, setOrderStatusOpen] = useState(false)
   const [paymentStatusOpen, setPaymentStatusOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -31,6 +41,7 @@ export default function OrderEditModal({ open, onOpenChange, order, onSuccess }:
   useEffect(() => {
     setOrderStatus(order?.orderStatus || "")
     setPaymentStatus(order?.paymentStatus || "")
+    setEstimatedDeliveryDays(order?.estimatedDeliveryDays || "")
   }, [order])
 
   // Close dropdowns when clicking outside
@@ -51,6 +62,12 @@ export default function OrderEditModal({ open, onOpenChange, order, onSuccess }:
       const updates: any = {}
       if (orderStatus !== order.orderStatus) updates.orderStatus = orderStatus
       if (paymentStatus !== order.paymentStatus) updates.paymentStatus = paymentStatus
+      const trimmedEstimate = (estimatedDeliveryDays || "").trim()
+      const originalEstimate = order?.estimatedDeliveryDays || ""
+      const estimateChanged = trimmedEstimate !== originalEstimate
+      if (estimateChanged) {
+        updates.estimatedDeliveryDays = trimmedEstimate || null
+      }
 
       if (Object.keys(updates).length === 0) {
         toast.success("No changes made")
@@ -63,6 +80,10 @@ export default function OrderEditModal({ open, onOpenChange, order, onSuccess }:
 
       if (updates.paymentStatus) {
         await updatePaymentStatus(order._id, updates.paymentStatus, token)
+      }
+
+      if (estimateChanged) {
+        await editOrder(order._id, { estimatedDeliveryDays: updates.estimatedDeliveryDays }, token)
       }
 
       toast.success("Order updated successfully")
@@ -80,6 +101,10 @@ export default function OrderEditModal({ open, onOpenChange, order, onSuccess }:
     const statusMap: Record<string, { bg: string; text: string }> = {
       Pending: { bg: "bg-yellow-100", text: "text-yellow-800" },
       Processing: { bg: "bg-blue-100", text: "text-blue-800" },
+      "Order Placed": { bg: "bg-indigo-100", text: "text-indigo-800" },
+      Shipped: { bg: "bg-purple-100", text: "text-purple-800" },
+      "Out for Delivery": { bg: "bg-orange-100", text: "text-orange-800" },
+      Delivered: { bg: "bg-green-100", text: "text-green-800" },
       Completed: { bg: "bg-green-100", text: "text-green-800" },
       Cancelled: { bg: "bg-red-100", text: "text-red-800" },
     }
@@ -190,6 +215,23 @@ export default function OrderEditModal({ open, onOpenChange, order, onSuccess }:
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Estimated Delivery Days */}
+          <div>
+            <label className="text-sm font-medium text-foreground block mb-2">
+              Estimated Delivery (days/text)
+            </label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+              placeholder="e.g. 3-5 days (leave empty to use default)"
+              value={estimatedDeliveryDays}
+              onChange={(e) => setEstimatedDeliveryDays(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              This overrides the default estimate from Shipping Information for this specific order.
+            </p>
           </div>
         </div>
 
