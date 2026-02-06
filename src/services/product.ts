@@ -15,6 +15,24 @@ export const getAllProduct = async (query: string) => {
   }
 };
 
+export const searchProduct = async (title: string, page = 1, limit = 10) => {
+  try {
+    const params = new URLSearchParams({
+      title,
+      page: String(page),
+      limit: String(limit),
+    });
+    const res = await api.get(`/product/search?${params.toString()}`);
+    return res.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      throw new Error(err.message);
+    } else {
+      throw new Error("An unexpected error occurred");
+    }
+  }
+};
+
 export const deleteProduct = async (id: string, token: string) => {
   try {
     const res = await api.delete(

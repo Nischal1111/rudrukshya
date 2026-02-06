@@ -14,7 +14,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
@@ -41,7 +40,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { TailwindSwitch } from "@/components/ui/switch"
-import { deleteProduct, toggleProductField, getAllProduct } from "@/services/product"
+import { deleteProduct, toggleProductField, getAllProduct, searchProduct } from "@/services/product"
 import Loader from "../Loader"
 
 export type Payment = {
@@ -68,8 +67,19 @@ export default function ProductsList() {
   const [totalPages, setTotalPages] = useState(1)
   const [rowSelection, setRowSelection] = useState({})
   const [selectedFilter, setSelectedFilter] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
   const { data: session } = useSession()
   const token = (session?.user as any)?.jwt || ""
+
+  // --- Debounce search term ---
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
   // --- Delete product handler ---
   const handleDelete = async (id: string | undefined) => {
@@ -206,7 +216,7 @@ export default function ProductsList() {
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
@@ -215,44 +225,48 @@ export default function ProductsList() {
   })
 
   // --- Fetch Data ---
-  const fetchData = async (pageNum: number, limit: number, filter?: string) => {
+  const fetchData = async (pageNum: number, limit: number, filter?: string, search?: string) => {
     try {
-      const filterBy: string[] = []
-      const filterValue: string[] = []
+      let data;
+      if (search) {
+        data = await searchProduct(search, pageNum, limit)
+      } else {
+        const filterBy: string[] = []
+        const filterValue: string[] = []
 
-      if (filter) {
-        filterBy.push(filter)
-        filterValue.push("true")
+        if (filter) {
+          filterBy.push(filter)
+          filterValue.push("true")
+        }
+
+        const query = new URLSearchParams({
+          page: String(pageNum),
+          limit: String(limit),
+          ...(filterBy.length && { filterBy: filterBy.join(",") }),
+          ...(filterValue.length && { filterValue: filterValue.join(",") }),
+        })
+
+        data = await getAllProduct(query.toString())
       }
 
-      const query = new URLSearchParams({
-        page: String(pageNum),
-        limit: String(limit),
-        ...(filterBy.length && { filterBy: filterBy.join(",") }),
-        ...(filterValue.length && { filterValue: filterValue.join(",") }),
-      })
-
-      const res = await getAllProduct(query.toString())
-      const data = res
-
-      setPage(data.pagination.currentPage)
-      setTotalPages(data.pagination.totalPages)
-      setUsers(data?.products)
+      setPage(data.pagination.currentPage || pageNum)
+      setTotalPages(data.pagination.totalPages || 1)
+      setUsers(data?.products || [])
       setLoading(false)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to fetch users")
+      setError(err instanceof Error ? err.message : "Failed to fetch products")
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchData(1, 8)
-  }, [])
+    setLoading(true)
+    fetchData(1, 8, selectedFilter || undefined, debouncedSearchTerm)
+  }, [debouncedSearchTerm, selectedFilter])
 
   const handleFilterSelect = (filter: string) => {
     setSelectedFilter(filter)
     setPage(1)
-    fetchData(1, 8, filter)
   }
 
   const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -267,8 +281,8 @@ export default function ProductsList() {
         <div className="flex items-center gap-3 flex-wrap">
           <Input
             placeholder="Search Product"
-            value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
-            onChange={(event) => table.getColumn("title")?.setFilterValue(event.target.value)}
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
             className="max-w-sm"
           />
         </div>
@@ -343,7 +357,7 @@ export default function ProductsList() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => fetchData(page - 1, 8, selectedFilter || undefined)}
+          onClick={() => fetchData(page - 1, 8, selectedFilter || undefined, debouncedSearchTerm)}
           disabled={page === 1}
         >
           Previous
@@ -353,7 +367,7 @@ export default function ProductsList() {
             key={pageNum}
             variant={pageNum === page ? "default" : "outline"}
             size="sm"
-            onClick={() => fetchData(pageNum, 8, selectedFilter || undefined)}
+            onClick={() => fetchData(pageNum, 8, selectedFilter || undefined, debouncedSearchTerm)}
           >
             {pageNum}
           </Button>
@@ -361,7 +375,7 @@ export default function ProductsList() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => fetchData(page + 1, 8, selectedFilter || undefined)}
+          onClick={() => fetchData(page + 1, 8, selectedFilter || undefined, debouncedSearchTerm)}
           disabled={page === totalPages}
         >
           Next
